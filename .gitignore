@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+models/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Java
+target/
+
+# Secrets & local data
+.env
+.env.local
+*.local
+
+# Local documents (may contain OSS signed URLs)
+doc/
+doc_result/
+
+# Logs & IDE
+*.log
+.idea/
+.vscode/
+.DS_Store

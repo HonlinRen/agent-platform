@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+models/
+*.py[cod]
+.env
+.ruff_cache/
+.pytest_cache/
+.idea/
+
+# 本地文档与解析结果（含 OSS 临时 URL，不纳入版本库）
+doc/
+doc_result/

@@ -1,0 +1,99 @@
+# 网关监听端口
+server:
+  port: 8080
+
+spring:
+  application:
+    name: agent-gateway
+  main:
+    web-application-type: reactive
+  # 限流计数依赖 Redis；Bucket4j ProxyManager 与此共用连接参数
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 3s
+      # password: your-password
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # 路由表：demo 走 httpbin；llm 模拟大模型 API（生产改为真实推理服务 URI）
+          routes:
+            - id: demo
+              uri: https://httpbin.org
+              predicates:
+                - Path=/httpbin/**
+              filters:
+                - RewritePath=/httpbin/(?<segment>.*), /${segment}
+            # /v1/** 会触发 TPM 输入/输出限流（见 GlobalFilter + app.rate-limit.llm-path-prefixes）
+            - id: llm
+              uri: https://httpbin.org
+              predicates:
+                - Path=/v1/**
+              filters:
+                - SetPath=/post
+            - id: agent-rag-api
+              uri: http://127.0.0.1:8081
+              predicates:
+                - Path=/api/**
+            - id: agent-rag-health
+              uri: http://127.0.0.1:8081
+              predicates:
+                - Path=/health
+            - id: agent-rag-prometheus
+              uri: http://127.0.0.1:8081
+              predicates:
+                - Path=/admin/rag/prometheus
+              filters:
+                - RewritePath=/admin/rag/prometheus, /metrics
+            - id: agent-rag-admin
+              uri: http://127.0.0.1:8081
+              predicates:
+                - Path=/admin/rag/**
+              filters:
+                - RewritePath=/admin/rag/(?<segment>.*), /admin/${segment}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: agent-gateway
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://127.0.0.1:4318/v1/traces
+
+# 限流业务配置：匹配任一路径前缀的 POST JSON/SSE 请求走 TPM 逻辑
+app:
+  rate-limit:
+    llm-path-prefixes:
+      - /v1/
+      - /api/chat/
+  jwt:
+    enabled: false
+    secret: demo-agent-gateway-secret-change-me
+  tenants:
+    quotas:
+      default_tenant:
+        rpm: 60
+        tpm-input: 2000
+        tpm-output: 2000
+      default_tenant_test:
+        rpm: 2
+        tpm-input: 2000
+        tpm-output: 2000
+      tenant_vip:
+        rpm: 10
+        tpm-input: 10000
+        tpm-output: 10000
+      tenant_vip_test:
+        rpm: 2
+        tpm-input: 10000
+        tpm-output: 10000

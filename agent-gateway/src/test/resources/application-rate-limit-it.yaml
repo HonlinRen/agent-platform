@@ -1,0 +1,39 @@
+spring:
+  main:
+    web-application-type: reactive
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 15
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: httpbin-mock
+              uri: http://127.0.0.1:${mock.upstream.port}
+              predicates:
+                - Path=/httpbin/**
+              filters:
+                - RewritePath=/httpbin/(?<segment>.*), /${segment}
+            - id: llm-mock
+              uri: http://127.0.0.1:${mock.upstream.port}
+              predicates:
+                - Path=/v1/**
+              filters:
+                - SetPath=/llm
+            - id: agent-rag-api-mock
+              uri: http://127.0.0.1:${mock.upstream.port}
+              predicates:
+                - Path=/api/**
+            - id: agent-rag-health-mock
+              uri: http://127.0.0.1:${mock.upstream.port}
+              predicates:
+                - Path=/health
+
+app:
+  rate-limit:
+    llm-path-prefixes:
+      - /v1/
+      - /api/chat/

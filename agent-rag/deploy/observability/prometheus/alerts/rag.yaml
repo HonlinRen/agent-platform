@@ -1,0 +1,33 @@
+groups:
+  - name: agent_slo
+    rules:
+      - alert: RagP95LatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(agent_request_duration_seconds_bucket[5m])) by (le)) > 8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAG p95 latency > 8s"
+          description: "Check Tempo traces to locate chroma vs rerank vs dashscope bottlenecks."
+
+      - alert: RagChatErrorRateHigh
+        expr: |
+          sum(rate(rag_chat_requests_total{status="error"}[5m]))
+          / clamp_min(sum(rate(rag_chat_requests_total[5m])), 1) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAG chat error rate > 10%"
+          description: "Check agent-rag logs and Tempo traces for failing chat streams."
+
+      - alert: GatewayRejectRateHigh
+        expr: |
+          sum(rate(gateway_rate_limit_rejected_total[5m]))
+          / clamp_min(sum(rate(http_server_requests_seconds_count{application="agent-gateway"}[5m])), 1) > 0.3
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Gateway reject rate > 30%"
+          description: "Rate limiting is rejecting more than 30% of requests."

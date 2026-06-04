@@ -1,0 +1,13 @@
+[project]
+name = "mcp-whitepaper-server"
+version = "0.1.0"
+description = "MCP server for whitepaper RAG tools"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.0.0",
+  "chromadb>=0.5.0",
+  "langchain-community>=0.3.0",
+]
+
+[project.scripts]
+mcp-whitepaper = "server:main"
