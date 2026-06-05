@@ -131,6 +131,46 @@ def test_reject_emits_static_answer_once(mock_graph_stream, mock_build_graph):
 
 @patch.object(streaming_mod, "build_graph")
 @patch.object(streaming_mod, "_graph_stream")
+def test_web_search_done_includes_context_source(mock_graph_stream, mock_build_graph):
+    mock_build_graph.return_value = MagicMock()
+    mock_graph_stream.return_value = _fake_graph_stream(
+        [
+            {
+                "type": "updates",
+                "data": {
+                    "web_search": {
+                        "context": "web ctx",
+                        "citations": [{"source": "Example", "url": "https://example.com", "page": "web", "type": "web"}],
+                        "context_source": "web",
+                        "reject_message": "",
+                    }
+                },
+            },
+            {"type": "updates", "data": {"generate": {"answer": "Web answer"}}},
+        ]
+    )
+
+    events = _collect_events(
+        stream_graph_response(
+            _mock_assistant(),
+            "unknown topic",
+            ChatMessageHistory(),
+            "thread-web",
+            "tenant-1",
+        )
+    )
+
+    status_nodes = [event.get("node") for event in events if event.get("type") == "status"]
+    assert "web_search" in status_nodes
+    web_status = next(event for event in events if event.get("node") == "web_search")
+    assert web_status["stage"] == "web"
+    assert events[-1]["type"] == "done"
+    assert events[-1]["context_source"] == "web"
+    assert events[-1]["citations"][0]["type"] == "web"
+
+
+@patch.object(streaming_mod, "build_graph")
+@patch.object(streaming_mod, "_graph_stream")
 @patch.object(streaming_mod, "is_cancelled")
 def test_cancelled_uses_emitted_tokens(mock_is_cancelled, mock_graph_stream, mock_build_graph):
     mock_build_graph.return_value = MagicMock()

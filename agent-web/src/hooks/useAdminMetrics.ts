@@ -13,7 +13,7 @@ interface AdminMetricsState {
   lastUpdated: Date | null
 }
 
-export function useAdminMetrics(collectionName: string) {
+export function useAdminMetrics() {
   const [state, setState] = useState<AdminMetricsState>({
     rag: null,
     gateway: null,
@@ -24,7 +24,7 @@ export function useAdminMetrics(collectionName: string) {
 
   const refresh = useCallback(async () => {
     const [ragResult, gatewayResult] = await Promise.allSettled([
-      fetchRagMetrics(collectionName),
+      fetchRagMetrics(),
       fetchGatewayMetrics(),
     ])
 
@@ -35,7 +35,7 @@ export function useAdminMetrics(collectionName: string) {
       gatewayStatus: gatewayResult.status === 'fulfilled' ? 'online' : 'offline',
       lastUpdated: new Date(),
     })
-  }, [collectionName])
+  }, [])
 
   useEffect(() => {
     void refresh()

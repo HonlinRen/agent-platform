@@ -53,17 +53,39 @@ def build_system_prompt(domain_hint: str) -> str:
 回答要专业、简洁、准确。
 
 要求：
-1. 必须优先依据 DOCUMENT 中提供的内容回答。
-2. 如果使用了 DOCUMENT 中的信息，必须在相关句子后标注来源，格式为：[来源：文件名 第N页]。
-3. 如果 DOCUMENT 中没有足够依据，请明确说明“知识库上下文中未找到充分依据”，不要编造。
+1. 必须优先依据 LOCAL DOCUMENT 中提供的本地知识库内容回答。
+2. 如果使用了 LOCAL DOCUMENT 中的信息，必须在相关句子后标注来源，格式为：[来源：文件名 第N页]。
+3. 如果 LOCAL DOCUMENT 中没有足够依据，请明确说明“本地知识库上下文中未找到充分依据”，不要编造。
 4. 不要引用 CHAT HISTORY 作为事实来源，CHAT HISTORY 只用于理解上下文。"""
 
 
 def build_direct_system_prompt(domain_hint: str) -> str:
     return f"""你是一个友好的{domain_hint}助手。
-用户当前问题是闲聊或与知识库文档无关的一般性问题。
-请简洁、专业地回答，不要编造知识库具体内容。
-如果问题实际上需要查文档，请提示用户换一种更具体的问法。"""
+用户当前问题是纯闲聊或寒暄（如问候、感谢、自我介绍等），与知识库查询和联网搜索无关。
+请简洁、自然地回应，不要编造知识库具体内容或行业事实。"""
+
+
+def build_web_system_prompt(domain_hint: str) -> str:
+    return f"""你是一个{domain_hint}助手。
+当前回答必须基于 WEB DOCUMENT 中的互联网公开检索结果，这些内容**不是**本地知识库文档。
+
+要求：
+1. 回答开头或首段必须明确声明：以下信息来自互联网公开检索，非本地知识库内容。
+2. 引用 WEB DOCUMENT 中的信息时，使用格式：[来源：标题 URL]。
+3. 不得将互联网信息伪装成本地知识库文档依据。
+4. 不要引用 CHAT HISTORY 作为事实来源，CHAT HISTORY 只用于理解上下文。"""
+
+
+def build_hybrid_system_prompt(domain_hint: str) -> str:
+    return f"""你是一个{domain_hint}助手。
+当前同时提供了本地知识库检索结果（LOCAL DOCUMENT）和互联网公开检索结果（WEB DOCUMENT）。
+
+要求：
+1. 优先依据 LOCAL DOCUMENT 回答；若 LOCAL DOCUMENT 信息不足，可补充 WEB DOCUMENT 中的内容。
+2. 引用 LOCAL DOCUMENT 时使用格式：[来源：文件名 第N页]。
+3. 引用 WEB DOCUMENT 时使用格式：[来源：标题 URL]，并明确该部分来自互联网公开检索。
+4. 不得将互联网信息伪装成本地知识库依据。
+5. 不要引用 CHAT HISTORY 作为事实来源，CHAT HISTORY 只用于理解上下文。"""
 
 
 def _snippet(text: str, max_len: int = 50) -> str:
@@ -110,6 +132,8 @@ class CarSafetyWhitepaperAssistant:
         domain_hint = get_domain_hint(self.collection_name)
         self.system_prompt = build_system_prompt(domain_hint)
         self.direct_system_prompt = build_direct_system_prompt(domain_hint)
+        self.web_system_prompt = build_web_system_prompt(domain_hint)
+        self.hybrid_system_prompt = build_hybrid_system_prompt(domain_hint)
 
         os.environ["DASHSCOPE_API_KEY"] = DASHSCOPE_API_KEY
         self.embeddings = DashScopeEmbeddings(model=EMBEDDING_MODEL)
@@ -147,9 +171,42 @@ class CarSafetyWhitepaperAssistant:
             input_variables=["human_input", "context", "chat_history"],
             template=(
                 self.system_prompt
-                + "\n\n=====BEGIN DOCUMENT=====\n"
+                + "\n\n=====BEGIN LOCAL DOCUMENT=====\n"
                 + "{context}\n"
-                + "=====END DOCUMENT=====\n\n"
+                + "=====END LOCAL DOCUMENT=====\n\n"
+                + "=====BEGIN CHAT HISTORY=====\n"
+                + "{chat_history}\n"
+                + "=====END CHAT HISTORY=====\n\n"
+                + "=====BEGIN CONVERSATION=====\n"
+                + "Human: {human_input}\n"
+                + "AI:"
+            ),
+        )
+        self.web_prompt = PromptTemplate(
+            input_variables=["human_input", "context", "chat_history"],
+            template=(
+                self.web_system_prompt
+                + "\n\n=====BEGIN WEB DOCUMENT=====\n"
+                + "{context}\n"
+                + "=====END WEB DOCUMENT=====\n\n"
+                + "=====BEGIN CHAT HISTORY=====\n"
+                + "{chat_history}\n"
+                + "=====END CHAT HISTORY=====\n\n"
+                + "=====BEGIN CONVERSATION=====\n"
+                + "Human: {human_input}\n"
+                + "AI:"
+            ),
+        )
+        self.hybrid_prompt = PromptTemplate(
+            input_variables=["human_input", "local_context", "web_context", "chat_history"],
+            template=(
+                self.hybrid_system_prompt
+                + "\n\n=====BEGIN LOCAL DOCUMENT=====\n"
+                + "{local_context}\n"
+                + "=====END LOCAL DOCUMENT=====\n\n"
+                + "=====BEGIN WEB DOCUMENT=====\n"
+                + "{web_context}\n"
+                + "=====END WEB DOCUMENT=====\n\n"
                 + "=====BEGIN CHAT HISTORY=====\n"
                 + "{chat_history}\n"
                 + "=====END CHAT HISTORY=====\n\n"

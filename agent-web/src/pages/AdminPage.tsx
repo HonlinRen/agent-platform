@@ -1,11 +1,3 @@
-import { useState } from 'react'
-
-import {
-  DEFAULT_KNOWLEDGE_BASE_ID,
-  KNOWLEDGE_BASE_OPTIONS,
-  getKnowledgeBaseLabel,
-  type KnowledgeBaseId,
-} from '../constants/knowledgeBases'
 import {
   GRAFANA_DASHBOARD_URL,
   PROMETHEUS_URL,
@@ -162,7 +154,7 @@ function RagDashboard({ metrics }: { metrics: RagMetrics | null }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard title="Qwen LLM 调用" value={metrics.llm_requests_total.toLocaleString()} subtitle="累计次数" />
         <MetricCard title="Embedding 调用" value={metrics.embedding_requests_total.toLocaleString()} subtitle="累计次数" />
         <MetricCard title="Rerank 重排序" value={metrics.rerank_requests_total.toLocaleString()} subtitle="累计次数" />
@@ -170,6 +162,11 @@ function RagDashboard({ metrics }: { metrics: RagMetrics | null }) {
           title="Tool 调用"
           value={(metrics.tool_calls_total ?? 0).toLocaleString()}
           subtitle="Agent 工具累计"
+        />
+        <MetricCard
+          title="Tavily 联网检索"
+          value={(metrics.tavily_calls_total ?? 0).toLocaleString()}
+          subtitle={`成功 ${metrics.tavily_calls_ok ?? 0} / 无结果 ${metrics.tavily_calls_empty ?? 0} / 失败 ${metrics.tavily_calls_error ?? 0}`}
         />
       </div>
 
@@ -245,17 +242,6 @@ function RagDashboard({ metrics }: { metrics: RagMetrics | null }) {
         <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
           <h3 className="font-medium text-slate-900">服务信息</h3>
           <dl className="space-y-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">知识库</dt>
-              <dd className="font-medium text-slate-900">
-                {metrics.collection.label ?? getKnowledgeBaseLabel(metrics.collection.name)} (
-                {metrics.collection.name})
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">文档向量数</dt>
-              <dd className="font-medium text-slate-900">{metrics.collection.document_count.toLocaleString()}</dd>
-            </div>
             <div className="flex justify-between gap-4">
               <dt className="text-slate-500">LLM 模型</dt>
               <dd className="font-medium text-slate-900">{metrics.config.llm_model}</dd>
@@ -381,8 +367,7 @@ function GatewayDashboard({ metrics }: { metrics: GatewayMetrics | null }) {
 }
 
 export function AdminPage() {
-  const [collectionName, setCollectionName] = useState<KnowledgeBaseId>(DEFAULT_KNOWLEDGE_BASE_ID)
-  const { rag, gateway, ragStatus, gatewayStatus, lastUpdated, refresh } = useAdminMetrics(collectionName)
+  const { rag, gateway, ragStatus, gatewayStatus, lastUpdated, refresh } = useAdminMetrics()
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -393,21 +378,6 @@ export function AdminPage() {
             <p className="mt-1 text-sm text-slate-500">RAG 资源消耗与 Gateway 限流统计，每 5 秒自动刷新</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <label htmlFor="admin-kb-select" className="text-sm text-slate-600">
-              知识库
-            </label>
-            <select
-              id="admin-kb-select"
-              value={collectionName}
-              onChange={(event) => setCollectionName(event.target.value as KnowledgeBaseId)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700"
-            >
-              {KNOWLEDGE_BASE_OPTIONS.map((kb) => (
-                <option key={kb.id} value={kb.id}>
-                  {kb.label}
-                </option>
-              ))}
-            </select>
             <StatusBadge status={ragStatus} />
             <span className="text-xs text-slate-400">RAG</span>
             <StatusBadge status={gatewayStatus} />

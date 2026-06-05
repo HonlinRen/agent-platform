@@ -107,6 +107,7 @@ flowchart TB
 | **数据库**          | `db/`*                               | SQLAlchemy + MySQL：conversations、chat_messages、chat_feedback                          |
 | **文档入库（离线）**     | `doc_parse/`*                        | 阿里云 DocMind 解析 → JSON → 切片 → Embedding → Chroma upsert                                |
 | **MCP Server**   | `mcp_servers/whitepaper/`            | 可选，将检索工具以 MCP 协议暴露                                                                    |
+| **MCP Tavily**   | `mcp_servers/tavily/`                | 可选，Tavily 联网检索 MCP 暴露（与 `web_search` 节点共享实现）                                      |
 | **可观测部署**        | `deploy/observability/`              | Docker Compose：Prometheus + Grafana + Tempo + OTel Collector                          |
 
 
@@ -173,9 +174,13 @@ flowchart TD
     retrieve -->|低分且未超重试| rewrite
     retrieve --> grade_documents
 
-    grade_documents -->|reject 拒答| reject --> END
+    grade_documents -->|本地检索失败且 Tavily 可用| web_search
+    grade_documents -->|本地检索失败且无 Tavily| reject --> END
     grade_documents -->|rag| generate --> END
     grade_documents -->|tool| agent
+
+    web_search -->|有结果| generate
+    web_search -->|无结果| reject
 
     agent -->|有 tool_calls| tools --> agent
     agent -->|无 tool / 超轮次| generate
@@ -197,7 +202,7 @@ flowchart TD
 
 **AgentState 主要字段（`rag/graph/state.py`）：**
 
-`messages`, `user_query`, `rewritten_query`, `documents`, `context`, `route`, `tool_calls_log`, `citations`, `answer`, `reject_message`, `tool_rounds`, `retrieve_retries`
+`messages`, `user_query`, `rewritten_query`, `documents`, `context`, `route`, `tool_calls_log`, `citations`, `context_source`, `answer`, `reject_message`, `tool_rounds`, `retrieve_retries`
 
 ### 2.3 文档入库链路（离线）
 
@@ -268,7 +273,7 @@ flowchart LR
     ADMIN --> G2["GET /admin/rag/metrics"]
 
     G1 --> GW["Gateway Redis 计数<br/>RPM/TPM 剩余/拒绝"]
-    G2 --> RAG["RAG Prometheus + Redis<br/>LLM/Embed/Rerank 耗时"]
+    G2 --> RAG["RAG Prometheus + Redis<br/>LLM/Embed/Rerank/Tavily 计数"]
 
     PROM["Prometheus :9090"] --> GRAF["Grafana Dashboard"]
     PROM --> RAG
@@ -302,7 +307,8 @@ flowchart LR
 | **文档解析**          | 阿里云 DocMind DocParser                                        | PDF 结构化解析                   |
 | **限流**            | Bucket4j + Lettuce Redis                                     | 分布式令牌桶 RPM/TPM              |
 | **可观测**           | OpenTelemetry, Prometheus, Grafana, Tempo                    | Trace + Metrics + Dashboard |
-| **可选扩展**          | MCP Server (whitepaper)                                      | 工具标准化接入                     |
+| **可选扩展**          | MCP Server (whitepaper / tavily)                               | 工具标准化接入                     |
+| **联网兜底**          | Tavily (`rag/tools/tavily_search.py`)                        | 本地检索失败后自动联网搜索           |
 | **可选追踪**          | LangSmith                                                    | LLM 调用 trace                |
 
 
@@ -318,6 +324,7 @@ flowchart LR
 | **本地 Rerank**     | BAAI/bge-reranker-base            | `RERANK_`*, 可选 GPU                      |
 | **阿里云 DocMind**   | PDF 结构化解析                         | `alibabacloud_docmind_api`              |
 | **MCP**           | 可选工具标准化接入                         | `MCP_ENABLED`, `MCP_WHITEPAPER_COMMAND` |
+| **Tavily**        | 本地检索失败时联网兜底                     | `TAVILY_KEY`, `TAVILY_ENABLED`, `TAVILY_SEARCH_DEPTH` |
 | **agent-gateway** | Tool `get_tenant_quota` 读 RPM/TPM | `GATEWAY_BASE_URL`                      |
 | **LangSmith**     | 可选 trace                          | `LANGCHAIN_TRACING_V2`                  |
 
@@ -514,7 +521,9 @@ flowchart LR
 
 **Span 示例：** `rag.graph.run`, `rag.graph.{node}`, `chroma.query`, `rerank`, `dashscope.embedding`, `rag.llm.invoke`
 
-**Prometheus 指标示例：** `agent_request_duration_seconds`, `rag_node_duration_seconds`, `rag_chroma_query_duration_seconds`, `rag_retrieval_score`, `rag_reject_total`
+**Prometheus 指标示例：** `agent_request_duration_seconds`, `rag_node_duration_seconds`, `rag_chroma_query_duration_seconds`, `rag_retrieval_score`, `rag_reject_total`, `rag_tavily_search_total`
+
+**Redis Admin 计数（按租户，`metrics:rag:{tenant}:*`）：** `llm_requests`, `embedding_requests`, `rerank_requests`, `tool_calls`, `tavily_calls`, `tavily_calls_ok`, `tavily_calls_empty`, `tavily_calls_error`。`GET /admin/metrics` 返回对应 `*_total` 字段；Tavily 调用在 `rag/tools/tavily_search.py` 写入，Admin 看板单独展示「Tavily 联网检索」卡片。
 
 **面试话术：** 「Trace 看单次请求路径，Metrics 看 SLA，Redis 计数给 Admin 看租户级累计。」
 
@@ -567,6 +576,7 @@ flowchart LR
 | Phase 2 | LangGraph 替换固定流水线 + Router | ✅ 已完成       |
 | Phase 3 | MySQL 会话持久化 + 反馈           | ✅ 已完成       |
 | Phase 4 | MCP 可选接入                   | ⚠️ 可选，已实现   |
+| Phase 4b | Tavily 联网检索兜底           | ✅ 已实现       |
 | Phase 5 | HTTP ingest 打通 DocMind 流水线 | ❌ 占位，待完善    |
 | Phase 6 | grade_documents / 幻觉检测     | ⚠️ 部分（拒答已有） |
 

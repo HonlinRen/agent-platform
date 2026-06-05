@@ -72,6 +72,11 @@ RAG_LLM_REQUESTS = Counter("rag_llm_requests_total", "Total LLM invocations", ["
 RAG_EMBEDDING_REQUESTS = Counter("rag_embedding_requests_total", "Total embedding invocations", ["tenant"])
 RAG_RERANK_REQUESTS = Counter("rag_rerank_requests_total", "Total rerank invocations", ["tenant"])
 RAG_TOOL_CALLS = Counter("rag_tool_calls_total", "Total tool invocations", ["tool", "tenant"])
+RAG_TAVILY_SEARCH_TOTAL = Counter(
+    "rag_tavily_search_total",
+    "Total Tavily web search invocations",
+    ["status", "tenant"],
+)
 RAG_CHAT_REQUESTS = Counter(
     "rag_chat_requests_total",
     "Total chat stream requests",

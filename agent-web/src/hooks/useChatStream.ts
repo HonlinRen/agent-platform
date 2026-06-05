@@ -59,6 +59,9 @@ function metadataFromApi(raw: Record<string, unknown> | null | undefined): TurnM
     toolCalls: (raw.tool_calls as ToolCallRecord[] | undefined) ?? (raw.toolCalls as ToolCallRecord[] | undefined),
     runId: (raw.run_id as string | undefined) ?? (raw.runId as string | undefined),
     citations: raw.citations as TurnMetadata['citations'],
+    contextSource:
+      (raw.context_source as TurnMetadata['contextSource']) ??
+      (raw.contextSource as TurnMetadata['contextSource']),
     stopped: raw.stopped as boolean | undefined,
   }
 }
@@ -346,6 +349,7 @@ export function useChatStream(tenantId: string, collectionName: string) {
               toolCalls: event.data.tool_calls ?? turnMetadata.toolCalls,
               runId: event.data.run_id,
               citations: event.data.citations,
+              contextSource: event.data.context_source,
             }
             setMessages((prev) =>
               prev.map((item) =>

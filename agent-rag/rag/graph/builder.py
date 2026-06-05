@@ -12,6 +12,7 @@ from rag.graph.nodes import (
     route_after_retrieve,
     route_after_router,
     route_after_tools,
+    route_after_web_search,
 )
 from rag.graph.state import AgentState
 
@@ -33,6 +34,7 @@ def build_graph(assistant: CarSafetyWhitepaperAssistant, tenant_id: str = "defau
     graph.add_node("rewrite", nodes["rewrite"])
     graph.add_node("retrieve", nodes["retrieve"])
     graph.add_node("grade_documents", nodes["grade_documents"])
+    graph.add_node("web_search", nodes["web_search"])
     graph.add_node("agent", nodes["agent"])
     graph.add_node("tools", nodes["tools"])
     graph.add_node("generate", nodes["generate"])
@@ -49,6 +51,7 @@ def build_graph(assistant: CarSafetyWhitepaperAssistant, tenant_id: str = "defau
         {"rewrite": "rewrite", "grade_documents": "grade_documents"},
     )
     graph.add_conditional_edges("grade_documents", route_after_grade)
+    graph.add_conditional_edges("web_search", route_after_web_search)
     graph.add_edge("reject", END)
     graph.add_conditional_edges("agent", route_after_agent)
     graph.add_conditional_edges("tools", route_after_tools)

@@ -19,6 +19,7 @@ STAGE_BY_NODE: dict[str, str] = {
     "rewrite": "rewrite",
     "retrieve": "retrieve",
     "grade_documents": "retrieve",
+    "web_search": "web",
     "agent": "agent",
     "tools": "tools",
     "generate": "generate",
@@ -47,11 +48,13 @@ def _initial_state(
         rewritten_query="",
         documents=[],
         context="",
+        web_context="",
         route="rag",
         tool_calls_log=[],
         citations=[],
         answer="",
         reject_message="",
+        context_source="local",
         tenant_id=tenant_id,
         thread_id=thread_id,
         tool_rounds=0,
@@ -109,6 +112,7 @@ def _cancelled_event(
         "tool_calls": tool_calls_accum,
         "run_id": run_id,
         "citations": final_state.get("citations", []),
+        "context_source": final_state.get("context_source", "local"),
     }
 
 
@@ -130,6 +134,7 @@ def _done_event(
         "tool_calls": tool_calls_accum,
         "run_id": run_id,
         "citations": final_state.get("citations", []),
+        "context_source": final_state.get("context_source", "local"),
     }
 
 
@@ -166,6 +171,17 @@ def _process_node_update(
                 final_state["context"] = update["context"]
             if update.get("reject_message"):
                 final_state["reject_message"] = update["reject_message"]
+        if node_name == "web_search":
+            if update.get("context"):
+                final_state["context"] = update["context"]
+            if update.get("web_context"):
+                final_state["web_context"] = update["web_context"]
+            if update.get("citations"):
+                final_state["citations"] = update["citations"]
+            if update.get("context_source"):
+                final_state["context_source"] = update["context_source"]
+            if "reject_message" in update:
+                final_state["reject_message"] = update["reject_message"]
         if node_name == "tools":
             for log in update.get("tool_calls_log") or []:
                 tool_calls_accum.append(log)
@@ -183,7 +199,6 @@ def _process_node_update(
                 if node_name == "direct_reply":
                     final_state["route"] = "direct"
                 elif node_name == "reject":
-                    final_state["route"] = "rag"
                     if not any_token_emitted:
                         yield {"type": "token", "content": answer}
                 else:

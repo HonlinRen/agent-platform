@@ -8,9 +8,9 @@ import { checkHealth } from '../api/chatStream'
 
 import {
 
-  DEFAULT_KNOWLEDGE_BASE_ID,
+  CHAT_KNOWLEDGE_BASE_OPTIONS,
 
-  KNOWLEDGE_BASE_OPTIONS,
+  DEFAULT_KNOWLEDGE_BASE_ID,
 
   type KnowledgeBaseId,
 
@@ -300,7 +300,7 @@ export function ChatLayout() {
 
             >
 
-              {KNOWLEDGE_BASE_OPTIONS.map((kb) => (
+              {CHAT_KNOWLEDGE_BASE_OPTIONS.map((kb) => (
 
                 <option key={kb.id} value={kb.id}>
 

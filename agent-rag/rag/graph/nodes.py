@@ -7,11 +7,12 @@ from langgraph.prebuilt import ToolNode
 
 from rag.assistant import MAX_RETRIEVE_RETRIES, MAX_TOOL_ROUNDS, llm_output_to_text
 from rag.metrics import record_llm
-from rag.reject import reject_reason
+from rag.reject import needs_web_supplement, reject_reason
 from rag.telemetry import record_reject, span
 from rag.router import classify_route
 from rag.graph.state import AgentState
 from rag.tools.registry import build_tools
+from rag.tools.tavily_search import ensure_web_disclaimer, is_tavily_enabled, search_web
 
 if TYPE_CHECKING:
     from rag.assistant import CarSafetyWhitepaperAssistant
@@ -66,6 +67,76 @@ def make_nodes(assistant: CarSafetyWhitepaperAssistant, tenant_id: str):
         if reject:
             return {"reject_message": msg}
         return {"reject_message": ""}
+
+    def _web_search_failure(state: AgentState, result: dict[str, Any], is_supplement: bool) -> dict[str, Any]:
+        from rag.debug_trace import debug_log
+
+        error = str(result.get("error") or "")
+        route = state.get("route", "rag")
+        debug_log(
+            "nodes.py:web_search_node",
+            "web search failed",
+            {"route": route, "error": error, "is_supplement": is_supplement, "status": result.get("status")},
+            "C",
+        )
+        if is_supplement:
+            return {"context_source": "local"}
+        if error == "tavily_disabled":
+            return {
+                "reject_message": "联网搜索功能未配置，请在服务端环境变量中设置 TAVILY_KEY 后重启服务。",
+                "context_source": "local",
+            }
+        if "No module named 'tavily'" in error:
+            return {
+                "reject_message": "联网搜索依赖未安装，请在 agent-rag 虚拟环境中执行：pip install tavily-python",
+                "context_source": "local",
+            }
+        if result.get("status") == "empty":
+            return {
+                "reject_message": "联网搜索未找到相关内容，请换一种问法或缩小范围后重试。",
+                "context_source": "local",
+            }
+        return {
+            "reject_message": "联网搜索暂时不可用，请稍后重试。",
+            "context_source": "local",
+        }
+
+    def web_search_node(state: AgentState) -> dict[str, Any]:
+        from rag.debug_trace import debug_log
+
+        query = state.get("rewritten_query") or state["user_query"]
+        local_context = (state.get("context") or "").strip()
+        is_supplement = bool(local_context) and state.get("route") != "web"
+        debug_log(
+            "nodes.py:web_search_node",
+            "web search start",
+            {
+                "route": state.get("route"),
+                "query": query,
+                "is_supplement": is_supplement,
+                "tavily_enabled": is_tavily_enabled(),
+            },
+            "A",
+        )
+        result = search_web(query)
+        if result.get("status") == "ok":
+            web_ctx = result.get("context") or ""
+            web_citations = result.get("citations") or []
+            if is_supplement:
+                existing_citations = state.get("citations") or []
+                return {
+                    "web_context": web_ctx,
+                    "citations": existing_citations + web_citations,
+                    "context_source": "hybrid",
+                    "reject_message": "",
+                }
+            return {
+                "context": web_ctx,
+                "citations": web_citations,
+                "context_source": "web",
+                "reject_message": "",
+            }
+        return _web_search_failure(state, result, is_supplement)
 
     def agent_node(state: AgentState) -> dict[str, Any]:
         system = SystemMessage(
@@ -128,17 +199,41 @@ def make_nodes(assistant: CarSafetyWhitepaperAssistant, tenant_id: str):
                     context = str(msg.content)
                     break
 
-        chain = assistant.prompt | assistant.llm
+        context_source = state.get("context_source", "local")
+        chat_history = assistant.get_chat_history_text(history)
         with span("rag.llm.invoke", {"rag.operation": "generate"}):
             record_llm()
-            response = chain.invoke(
-                {
-                    "human_input": state["user_query"],
-                    "context": context,
-                    "chat_history": assistant.get_chat_history_text(history),
-                }
-            )
+            if context_source == "hybrid":
+                chain = assistant.hybrid_prompt | assistant.llm
+                response = chain.invoke(
+                    {
+                        "human_input": state["user_query"],
+                        "local_context": context,
+                        "web_context": state.get("web_context") or "",
+                        "chat_history": chat_history,
+                    }
+                )
+            elif context_source == "web":
+                chain = assistant.web_prompt | assistant.llm
+                response = chain.invoke(
+                    {
+                        "human_input": state["user_query"],
+                        "context": context,
+                        "chat_history": chat_history,
+                    }
+                )
+            else:
+                chain = assistant.prompt | assistant.llm
+                response = chain.invoke(
+                    {
+                        "human_input": state["user_query"],
+                        "context": context,
+                        "chat_history": chat_history,
+                    }
+                )
         answer = llm_output_to_text(response)
+        if context_source in {"web", "hybrid"}:
+            answer = ensure_web_disclaimer(answer)
         return {"answer": answer, "messages": [AIMessage(content=answer)]}
 
     def direct_reply_node(state: AgentState) -> dict[str, Any]:
@@ -154,7 +249,7 @@ def make_nodes(assistant: CarSafetyWhitepaperAssistant, tenant_id: str):
         return {"answer": answer, "route": "direct", "messages": [AIMessage(content=answer)]}
 
     def reject_node(state: AgentState) -> dict[str, Any]:
-        msg = state.get("reject_message") or "知识库上下文中未找到充分依据。"
+        msg = state.get("reject_message") or "本地知识库上下文中未找到充分依据。"
         ranked = state.get("documents") or []
         record_reject(reject_reason(ranked), tenant_id)
         return {"answer": msg, "messages": [AIMessage(content=msg)]}
@@ -164,6 +259,7 @@ def make_nodes(assistant: CarSafetyWhitepaperAssistant, tenant_id: str):
         "rewrite": rewrite_node,
         "retrieve": retrieve_node,
         "grade_documents": grade_documents_node,
+        "web_search": web_search_node,
         "agent": agent_node,
         "tools": tools_wrapper,
         "generate": generate_node,
@@ -174,22 +270,55 @@ def make_nodes(assistant: CarSafetyWhitepaperAssistant, tenant_id: str):
     }
 
 
-def route_after_router(state: AgentState) -> Literal["direct_reply", "rewrite", "agent"]:
+def route_after_router(state: AgentState) -> Literal["direct_reply", "rewrite", "agent", "web_search"]:
     route = state.get("route", "rag")
     if route == "direct":
         return "direct_reply"
+    if route == "web":
+        return "web_search"
     if route == "tool":
         return "agent"
     return "rewrite"
 
 
-def route_after_grade(state: AgentState) -> Literal["reject", "generate", "agent"]:
+def route_after_grade(state: AgentState) -> Literal["reject", "generate", "agent", "web_search"]:
     if state.get("reject_message"):
+        if is_tavily_enabled():
+            return "web_search"
         return "reject"
+    if is_tavily_enabled() and needs_web_supplement(state.get("documents") or []):
+        return "web_search"
     route = state.get("route", "rag")
     if route == "tool":
         return "agent"
     return "generate"
+
+
+def route_after_web_search(state: AgentState) -> Literal["generate", "reject"]:
+    from rag.debug_trace import debug_log
+
+    context_source = state.get("context_source", "local")
+    decision = "reject"
+    if context_source == "hybrid" and state.get("web_context"):
+        decision = "generate"
+    elif context_source == "web" and state.get("context"):
+        decision = "generate"
+    elif context_source == "local" and state.get("context"):
+        decision = "generate"
+    debug_log(
+        "nodes.py:route_after_web_search",
+        "route decision",
+        {
+            "decision": decision,
+            "context_source": context_source,
+            "has_context": bool(state.get("context")),
+            "has_web_context": bool(state.get("web_context")),
+            "reject_message": state.get("reject_message"),
+            "route": state.get("route"),
+        },
+        "D",
+    )
+    return decision
 
 
 def route_after_agent(state: AgentState) -> Literal["tools", "generate"]:

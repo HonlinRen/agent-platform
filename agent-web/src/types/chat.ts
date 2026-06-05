@@ -8,6 +8,8 @@ export interface ChatMessage {
 export interface Citation {
   source: string
   page: string | number
+  url?: string
+  type?: 'local' | 'web'
 }
 
 export interface ToolCallRecord {
@@ -19,11 +21,12 @@ export interface ToolCallRecord {
 
 export interface TurnMetadata {
   rewrittenQuery?: string
-  route?: 'rag' | 'direct' | 'tool'
+  route?: 'rag' | 'direct' | 'tool' | 'web'
   toolCalls?: ToolCallRecord[]
   nodes?: string[]
   runId?: string
   citations?: Citation[]
+  contextSource?: 'local' | 'web'
   stopped?: boolean
 }
 
@@ -63,10 +66,11 @@ export interface StreamDoneEvent {
   content: string
   rewritten_query: string
   thread_id?: string
-  route?: 'rag' | 'direct' | 'tool'
+  route?: 'rag' | 'direct' | 'tool' | 'web'
   tool_calls?: ToolCallRecord[]
   run_id?: string
   citations?: Citation[]
+  context_source?: 'local' | 'web'
 }
 
 export interface StreamErrorEvent {

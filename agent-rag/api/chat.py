@@ -124,6 +124,7 @@ def _stream_chat_events(
                         "tool_calls": event.get("tool_calls") or [],
                         "run_id": run_id,
                         "citations": event.get("citations") or [],
+                        "context_source": event.get("context_source", "local"),
                     }
                     save_turn_best_effort(
                         tenant_id=tenant_id,
@@ -145,6 +146,7 @@ def _stream_chat_events(
                             "tool_calls": event.get("tool_calls") or [],
                             "run_id": run_id,
                             "citations": event.get("citations") or [],
+                            "context_source": event.get("context_source", "local"),
                         },
                     )
                 elif event_type == "cancelled":
@@ -158,6 +160,7 @@ def _stream_chat_events(
                         "tool_calls": event.get("tool_calls") or [],
                         "run_id": run_id,
                         "citations": event.get("citations") or [],
+                        "context_source": event.get("context_source", "local"),
                         "stopped": True,
                     }
                     if content:

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import httpx
 from langchain_core.tools import StructuredTool
 
+from rag.knowledge_bases import get_domain_hint
 from rag.metrics import record_tool_call
 from rag.reject import CLARIFY_MESSAGE, REJECT_MESSAGE
 from rag.telemetry import inject_trace_headers, span
@@ -34,8 +35,10 @@ def _wrap_tool(name: str, func):
 
 
 def _local_chroma_tools(assistant: CarSafetyWhitepaperAssistant) -> list[StructuredTool]:
+    domain_hint = get_domain_hint(assistant.collection_name)
+
     def search_whitepaper(query: str) -> str:
-        """向量检索白皮书内容并 rerank，返回结构化 chunk 列表。"""
+        """向量检索本地知识库内容并 rerank，返回结构化 chunk 列表。"""
         ranked = assistant.retrieve_and_rank(query)
         reject, msg = assistant.check_retrieval_quality(ranked)
         if reject:
@@ -66,17 +69,17 @@ def _local_chroma_tools(assistant: CarSafetyWhitepaperAssistant) -> list[Structu
         StructuredTool.from_function(
             func=_wrap_tool("search_whitepaper", search_whitepaper),
             name="search_whitepaper",
-            description="在汽车安全白皮书向量库中检索与问题相关的文档片段。",
+            description=f"在{domain_hint}向量库中检索与问题相关的文档片段。",
         ),
         StructuredTool.from_function(
             func=_wrap_tool("get_chunk_by_source", get_chunk_by_source),
             name="get_chunk_by_source",
-            description="按 source 文件名和 page 页码精确获取白皮书 chunk。",
+            description=f"按 source 文件名和 page 页码精确获取{domain_hint}文档 chunk。",
         ),
         StructuredTool.from_function(
             func=_wrap_tool("list_collection_stats", list_collection_stats),
             name="list_collection_stats",
-            description="列出白皮书集合的文档数量与来源文件列表。",
+            description=f"列出{domain_hint}集合的文档数量与来源文件列表。",
         ),
     ]
 

@@ -12,6 +12,7 @@ from rag.telemetry import (
     RAG_LLM_REQUESTS,
     RAG_RERANK_REQUESTS,
     RAG_RETRIEVAL_SCORE,
+    RAG_TAVILY_SEARCH_TOTAL,
     RAG_TOOL_CALLS,
     get_process_start_time,
     get_process_started_at,
@@ -82,6 +83,13 @@ def record_tool_call(tool: str = "unknown", count: int = 1, tenant: str | None =
     RAG_TOOL_CALLS.labels(tool=tool, tenant=tenant_id).inc(count)
 
 
+def record_tavily_search(status: str, tenant: str | None = None) -> None:
+    tenant_id = resolve_tenant_id(tenant)
+    _incr(_redis_key(tenant_id, "tavily_calls"))
+    _incr(_redis_key(tenant_id, f"tavily_calls_{status}"))
+    RAG_TAVILY_SEARCH_TOTAL.labels(status=status, tenant=tenant_id).inc()
+
+
 def record_retrieval_score(score: float, tenant: str | None = None, collection: str | None = None) -> None:
     tenant_id = resolve_tenant_id(tenant)
     collection_name = collection or "unknown"
@@ -95,6 +103,10 @@ def get_totals(tenant: str | None = None) -> dict[str, int]:
         "embedding_requests_total": _get_int(_redis_key(tenant_id, "embedding_requests")),
         "rerank_requests_total": _get_int(_redis_key(tenant_id, "rerank_requests")),
         "tool_calls_total": _get_int(_redis_key(tenant_id, "tool_calls")),
+        "tavily_calls_total": _get_int(_redis_key(tenant_id, "tavily_calls")),
+        "tavily_calls_ok": _get_int(_redis_key(tenant_id, "tavily_calls_ok")),
+        "tavily_calls_empty": _get_int(_redis_key(tenant_id, "tavily_calls_empty")),
+        "tavily_calls_error": _get_int(_redis_key(tenant_id, "tavily_calls_error")),
     }
 
 

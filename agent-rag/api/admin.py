@@ -37,6 +37,10 @@ def rag_metrics(request: Request, collection: str | None = None) -> RagMetricsRe
         embedding_requests_total=totals["embedding_requests_total"],
         rerank_requests_total=totals["rerank_requests_total"],
         tool_calls_total=totals.get("tool_calls_total", 0),
+        tavily_calls_total=totals.get("tavily_calls_total", 0),
+        tavily_calls_ok=totals.get("tavily_calls_ok", 0),
+        tavily_calls_empty=totals.get("tavily_calls_empty", 0),
+        tavily_calls_error=totals.get("tavily_calls_error", 0),
         collection={
             "name": collection_name,
             "label": get_label(collection_name),

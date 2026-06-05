@@ -127,6 +127,10 @@ class RagMetricsResponse(BaseModel):
     embedding_requests_total: int
     rerank_requests_total: int
     tool_calls_total: int = 0
+    tavily_calls_total: int = 0
+    tavily_calls_ok: int = 0
+    tavily_calls_empty: int = 0
+    tavily_calls_error: int = 0
     collection: RagCollectionInfo
     config: RagConfigInfo
     system: RagSystemInfo

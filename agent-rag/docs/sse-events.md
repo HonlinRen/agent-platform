@@ -63,7 +63,8 @@ LLM 流式输出片段。
   "route": "rag | direct | tool",
   "tool_calls": [],
   "run_id": "langsmith-run-id",
-  "citations": [{"source": "file.pdf", "page": 3}]
+  "citations": [{"source": "file.pdf", "page": 3}],
+  "context_source": "local | web"
 }
 ```
 

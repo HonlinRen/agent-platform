@@ -9,10 +9,10 @@ KNOWLEDGE_BASES: dict[str, str] = {
 
 DOMAIN_HINTS: dict[str, str] = {
     "white_paper_iot": "汽车安全白皮书",
-    "semiconductor": "半导体行业文档",
+    "semiconductor": "半导体行业知识库",
 }
 
-DEFAULT_COLLECTION = os.environ.get("CHROMA_COLLECTION_NAME", "white_paper_iot")
+DEFAULT_COLLECTION = os.environ.get("CHROMA_COLLECTION_NAME", "semiconductor")
 
 
 def validate_collection_name(name: str | None) -> str:

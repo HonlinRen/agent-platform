@@ -24,6 +24,14 @@ export interface RagMetrics {
 
   tool_calls_total?: number
 
+  tavily_calls_total?: number
+
+  tavily_calls_ok?: number
+
+  tavily_calls_empty?: number
+
+  tavily_calls_error?: number
+
   collection: {
 
     name: string

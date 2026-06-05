@@ -3,9 +3,10 @@ from __future__ import annotations
 import os
 
 RETRIEVAL_MIN_SCORE = float(os.environ.get("RETRIEVAL_MIN_SCORE", "0.15"))
+RETRIEVAL_SUPPLEMENT_SCORE = float(os.environ.get("RETRIEVAL_SUPPLEMENT_SCORE", "0.45"))
 
 REJECT_MESSAGE = (
-    "白皮书上下文中未找到充分依据，无法给出可靠回答。"
+    "本地知识库上下文中未找到充分依据，无法给出可靠回答。"
     "请尝试换一种问法，或补充更具体的章节、术语或页码信息。"
 )
 
@@ -36,3 +37,12 @@ def should_reject(ranked: list[dict]) -> tuple[bool, str]:
     if best is not None and best < RETRIEVAL_MIN_SCORE:
         return True, CLARIFY_MESSAGE
     return False, ""
+
+
+def needs_web_supplement(ranked: list[dict]) -> bool:
+    if not ranked:
+        return False
+    best = max_rerank_score(ranked)
+    if best is None:
+        return False
+    return RETRIEVAL_MIN_SCORE <= best < RETRIEVAL_SUPPLEMENT_SCORE

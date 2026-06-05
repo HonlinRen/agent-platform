@@ -45,7 +45,7 @@ export function MessageBubble({ message, onFeedback }: MessageBubbleProps) {
                 ) : null}
                 <ToolCallPanel toolCalls={metadata.toolCalls ?? []} />
                 <AgentTrace nodes={metadata.nodes ?? []} />
-                <CitationList citations={metadata.citations ?? []} />
+                <CitationList citations={metadata.citations ?? []} contextSource={metadata.contextSource} />
                 {metadata.runId ? (
                   <a
                     href={langsmithRunUrl(metadata.runId)}
