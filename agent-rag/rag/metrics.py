@@ -65,6 +65,14 @@ def record_llm(count: int = 1, tenant: str | None = None) -> None:
     RAG_LLM_REQUESTS.labels(tenant=tenant_id).inc(count)
 
 
+def record_and_track_llm(response: Any, *, fallback_text: str = "", tenant: str | None = None) -> None:
+    """Record LLM invocation count and accumulate per-request token usage when budget is active."""
+    record_llm(tenant=tenant)
+    from rag.request_budget import track_llm_response
+
+    track_llm_response(response, fallback_text=fallback_text)
+
+
 def record_embedding(count: int = 1, tenant: str | None = None) -> None:
     tenant_id = resolve_tenant_id(tenant)
     _incr(_redis_key(tenant_id, "embedding_requests"), count)

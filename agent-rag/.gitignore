@@ -10,3 +10,6 @@ models/
 # 本地文档与解析结果（含 OSS 临时 URL，不纳入版本库）
 doc/
 doc_result/
+
+# 运行时调试日志
+logs/

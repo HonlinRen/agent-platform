@@ -64,7 +64,28 @@ class HistoryMessage(BaseModel):
 class ChatHistoryResponse(BaseModel):
     thread_id: str
     collection_name: str | None = None
+    conversation_summary: str | None = None
     messages: list[HistoryMessage]
+
+
+class TenantProfileData(BaseModel):
+    focus_domains: list[str] = Field(default_factory=list)
+    preferred_answer_style: str = ""
+    common_systems: list[str] = Field(default_factory=list)
+    notes: str = ""
+
+
+class TenantProfileResponse(BaseModel):
+    tenant_id: str
+    profile: TenantProfileData
+    profile_summary: str | None = None
+    source: Literal["auto", "manual"] = "auto"
+    updated_at: datetime | None = None
+
+
+class TenantProfileUpdateRequest(BaseModel):
+    profile: TenantProfileData
+    profile_summary: str | None = None
 
 
 class KnowledgeBaseItem(BaseModel):
@@ -146,3 +167,37 @@ class IngestJobResponse(BaseModel):
     status: Literal["pending", "running", "completed", "failed"]
     message: str = ""
     detail: dict[str, Any] = Field(default_factory=dict)
+
+
+class TimingDistributionBucket(BaseModel):
+    bucket: str
+    count: int
+
+
+class TimingMetricSummary(BaseModel):
+    avg_ms: int | None = None
+    p50_ms: int | None = None
+    p90_ms: int | None = None
+    count: int = 0
+    distribution: list[TimingDistributionBucket] = Field(default_factory=list)
+
+
+class TimingOperationSummary(BaseModel):
+    count: int
+    avg_ms: int | None = None
+
+
+class TimingLlmSummary(TimingMetricSummary):
+    by_operation: dict[str, TimingOperationSummary] = Field(default_factory=dict)
+
+
+class TimingStatsResponse(BaseModel):
+    tenant_id: str
+    period_days: int
+    total_runs: int
+    collected_at: datetime
+    overall: TimingMetricSummary
+    embedding: TimingMetricSummary
+    chroma: TimingMetricSummary
+    rerank: TimingMetricSummary
+    llm: TimingLlmSummary

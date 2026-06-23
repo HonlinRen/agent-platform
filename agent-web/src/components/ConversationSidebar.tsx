@@ -7,7 +7,7 @@ interface ConversationSidebarProps {
   disabled?: boolean
   onSelect: (threadId: string) => void
   onNewChat: () => void
-  onDelete: (threadId: string) => void
+  onDelete: (threadId: string, title?: string) => void
 }
 
 function formatTime(value: string): string {
@@ -21,6 +21,25 @@ function formatTime(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      className="h-3.5 w-3.5"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 3h6m-8 4h10m-1 0-.7 12.1a1 1 0 0 1-1 .9H8.7a1 1 0 0 1-1-.9L7 7m3 4v5m4-5v5"
+      />
+    </svg>
+  )
 }
 
 export function ConversationSidebar({
@@ -76,11 +95,14 @@ export function ConversationSidebar({
                   <button
                     type="button"
                     disabled={disabled}
-                    onClick={() => onDelete(item.thread_id)}
+                    onClick={() => onDelete(item.thread_id, title)}
                     title="删除会话"
-                    className="rounded px-1.5 py-0.5 text-xs text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}
                   >
-                    删
+                    <TrashIcon />
+                    删除
                   </button>
                 </div>
               </li>

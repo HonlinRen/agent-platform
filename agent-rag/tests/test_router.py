@@ -24,27 +24,29 @@ def test_needs_web_supplement_score_range():
     assert needs_web_supplement([]) is False
 
 
-@patch("rag.router.record_llm")
-def test_classify_route_web_keyword_skips_llm(mock_record_llm):
+@patch("rag.router.timed_llm_invoke")
+def test_classify_route_web_keyword_skips_llm(mock_timed_llm_invoke):
     assistant = MagicMock()
     route = classify_route(assistant, "联网搜索英伟达部门")
     assert route == "web"
     assistant.router_llm.invoke.assert_not_called()
 
 
-@patch("rag.router.record_llm")
-def test_classify_route_parses_web_label(mock_record_llm):
+@patch("rag.router.timed_llm_invoke")
+def test_classify_route_parses_web_label(mock_timed_llm_invoke):
     assistant = MagicMock()
     assistant.collection_name = "semiconductor"
+    mock_timed_llm_invoke.side_effect = lambda _op, fn, **_kw: fn()
     assistant.router_llm.invoke.return_value = MagicMock(content="web")
     route = classify_route(assistant, "英伟达有哪些部门")
     assert route == "web"
 
 
-@patch("rag.router.record_llm")
-def test_classify_route_parses_direct_label(mock_record_llm):
+@patch("rag.router.timed_llm_invoke")
+def test_classify_route_parses_direct_label(mock_timed_llm_invoke):
     assistant = MagicMock()
     assistant.collection_name = "semiconductor"
+    mock_timed_llm_invoke.side_effect = lambda _op, fn, **_kw: fn()
     assistant.router_llm.invoke.return_value = MagicMock(content="direct")
     route = classify_route(assistant, "你好")
     assert route == "direct"

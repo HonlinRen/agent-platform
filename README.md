@@ -101,7 +101,7 @@ docker compose up -d
 
 - 生产环境请修改 gateway 的 JWT secret（勿使用 `demo-agent-gateway-secret-change-me`）。
 - `doc/`、`doc_result/` 可能含云服务临时 URL，仅保留在本地。
-- 更完整的架构说明见 [agent-rag/docs/architecture.md](agent-rag/docs/architecture.md)。
+- 更完整的架构说明见 [agent-rag/README.md](agent-rag/README.md)。
 
 ## License
 

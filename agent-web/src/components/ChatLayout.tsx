@@ -18,6 +18,10 @@ import {
 
 import { useChatStream } from '../hooks/useChatStream'
 
+import { useUserProfile } from '../hooks/useUserProfile'
+
+import { toUserFacingError } from '../utils/userError'
+
 import { ChatInput } from './ChatInput'
 
 import { ConversationSidebar } from './ConversationSidebar'
@@ -25,6 +29,8 @@ import { ConversationSidebar } from './ConversationSidebar'
 import { MessageList } from './MessageList'
 
 import { StatusIndicator } from './StatusIndicator'
+
+import { UserProfileDrawer } from './UserProfileDrawer'
 
 
 
@@ -86,6 +92,30 @@ export function ChatLayout() {
 
   const [jwtToken, setJwtToken] = useState<string>(() => getAuthToken() ?? '')
 
+  const [profileOpen, setProfileOpen] = useState(false)
+
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const {
+
+    profile,
+
+    status: profileStatus,
+
+    error: profileError,
+
+    isSaving: profileSaving,
+
+    saveMessage: profileSaveMessage,
+
+    refresh: refreshProfile,
+
+    save: saveProfile,
+
+    clear: clearProfile,
+
+  } = useUserProfile(tenantId)
+
 
 
   const selectedTenant = TENANT_OPTIONS.find((item) => item.id === tenantId) ?? TENANT_OPTIONS[0]
@@ -134,14 +164,24 @@ export function ChatLayout() {
 
 
 
-  const handleDeleteConversation = (targetThreadId: string) => {
+  const currentConversationTitle =
+    conversations.find((item) => item.thread_id === threadId)?.title?.trim() || '当前对话'
 
-    void removeConversation(targetThreadId).catch((err: unknown) => {
+  const canDeleteCurrent =
+    messages.length > 0 || conversations.some((item) => item.thread_id === threadId)
 
-      console.error(err)
+  const handleDeleteConversation = async (targetThreadId: string, title?: string) => {
+    const label = title?.trim() || '该对话'
+    if (!window.confirm(`确定删除「${label}」吗？删除后无法恢复。`)) {
+      return
+    }
 
-    })
-
+    setDeleteError(null)
+    try {
+      await removeConversation(targetThreadId)
+    } catch (err: unknown) {
+      setDeleteError(toUserFacingError(err instanceof Error ? err.message : undefined))
+    }
   }
 
 
@@ -193,6 +233,20 @@ export function ChatLayout() {
             </div>
 
             <div className="flex items-center gap-3">
+
+              <button
+
+                type="button"
+
+                onClick={() => setProfileOpen(true)}
+
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-100"
+
+              >
+
+                我的画像
+
+              </button>
 
               <a
 
@@ -259,6 +313,28 @@ export function ChatLayout() {
               >
 
                 清空对话
+
+              </button>
+
+              <button
+
+                type="button"
+
+                onClick={() => {
+
+                  void handleDeleteConversation(threadId, currentConversationTitle)
+
+                }}
+
+                disabled={isLoading || !canDeleteCurrent}
+
+                title={canDeleteCurrent ? '永久删除当前会话及消息' : '未保存的新对话不可删除'}
+
+                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+
+              >
+
+                删除当前对话
 
               </button>
 
@@ -392,6 +468,8 @@ export function ChatLayout() {
 
           {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
 
+          {deleteError ? <p className="mt-3 text-sm text-red-600">{deleteError}</p> : null}
+
         </header>
 
 
@@ -418,6 +496,32 @@ export function ChatLayout() {
         />
 
       </div>
+
+
+
+      <UserProfileDrawer
+
+        open={profileOpen}
+
+        profile={profile}
+
+        status={profileStatus}
+
+        error={profileError}
+
+        isSaving={profileSaving}
+
+        saveMessage={profileSaveMessage}
+
+        onClose={() => setProfileOpen(false)}
+
+        onRefresh={refreshProfile}
+
+        onSave={saveProfile}
+
+        onClear={clearProfile}
+
+      />
 
     </div>
 

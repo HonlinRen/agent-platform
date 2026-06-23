@@ -142,3 +142,71 @@ export interface GatewayMetrics {
 
 }
 
+
+
+export interface TimingDistributionBucket {
+
+  bucket: string
+
+  count: number
+
+}
+
+
+
+export interface TimingMetricSummary {
+
+  avg_ms?: number | null
+
+  p50_ms?: number | null
+
+  p90_ms?: number | null
+
+  count: number
+
+  distribution: TimingDistributionBucket[]
+
+}
+
+
+
+export interface TimingOperationSummary {
+
+  count: number
+
+  avg_ms?: number | null
+
+}
+
+
+
+export interface TimingLlmSummary extends TimingMetricSummary {
+
+  by_operation: Record<string, TimingOperationSummary>
+
+}
+
+
+
+export interface TimingStatsResponse {
+
+  tenant_id: string
+
+  period_days: number
+
+  total_runs: number
+
+  collected_at: string
+
+  overall: TimingMetricSummary
+
+  embedding: TimingMetricSummary
+
+  chroma: TimingMetricSummary
+
+  rerank: TimingMetricSummary
+
+  llm: TimingLlmSummary
+
+}
+

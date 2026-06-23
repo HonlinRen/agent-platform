@@ -1,7 +1,5 @@
 # Agent 工作空间总览
 
-> 完整架构图、数据流、技术栈与面试要点见 **[architecture.md](./architecture.md)**。
-
 本 Cursor 工作空间由三个独立 Git 仓库组成，共同实现「汽车安全白皮书」RAG 问答与多租户 API 网关限流演示。
 
 | 仓库 | 路径 | 技术栈 | 默认端口 |
@@ -52,7 +50,8 @@ flowchart LR
 
 - **领域**：汽车安全白皮书问答助手（`CarSafetyWhitepaperAssistant`）。
 - **检索**：DashScope Embedding → Chroma 召回 Top-N → 可选本地 `BAAI/bge-reranker-base` 重排至 Top-K。
-- **生成**：通义千问（默认 `qwen-plus`），支持多轮对话窗口（`CHAT_WINDOW_SIZE`）。
+- **生成**：通义千问（默认 `qwen-plus`），支持多轮 Memory（Recent + Summary + Tenant Profile，见 `docs/MemoryChat.md`）。
+- **多轮 Memory 迁移**：已有 MySQL 库需执行 `db/migrations/001_memory_upgrade.sql`。
 - **流式 API**：`POST /api/chat/stream`，SSE 事件类型：`status` / `token` / `done` / `error`。
 - **指标**：LLM / Embedding / Rerank 调用次数写入 Redis（与网关共用实例），`GET /admin/metrics` 暴露集合规模、模型配置、CPU/GPU/内存快照。
 
@@ -208,7 +207,7 @@ cd agent-rag/deploy/observability && docker compose up -d
 
 ## 仓库关系说明
 
-三个目录为**并列独立仓库**，无 monorepo 根目录。本文档位于 **agent-rag** 的 `docs/WORKSPACE.md`，便于在本工作空间打开时查阅全貌；修改某一服务时请进入对应仓库提交。
+三个目录为**并列独立仓库**，无 monorepo 根目录。本文档位于 **agent-rag** 的 `WORKSPACE.md`，便于在本工作空间打开时查阅全貌；修改某一服务时请进入对应仓库提交。
 
 ---
 

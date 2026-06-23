@@ -4,7 +4,7 @@ import {
   RAG_PROMETHEUS_METRICS_URL,
 } from '../constants/observability'
 import { useAdminMetrics } from '../hooks/useAdminMetrics'
-import type { GatewayMetrics, RagMetrics } from '../types/admin'
+import type { GatewayMetrics, RagMetrics, TimingMetricSummary, TimingStatsResponse } from '../types/admin'
 
 function formatTimestamp(value: string): string {
   const date = new Date(value)
@@ -22,6 +22,16 @@ function formatSeconds(value: number | null | undefined): string {
     return `${(value * 1000).toFixed(0)} ms`
   }
   return `${value.toFixed(2)} s`
+}
+
+function formatMilliseconds(value: number | null | undefined): string {
+  if (value == null) {
+    return '—'
+  }
+  if (value < 1000) {
+    return `${value} ms`
+  }
+  return `${(value / 1000).toFixed(2)} s`
 }
 
 function formatScore(value: number | null | undefined): string {
@@ -279,6 +289,125 @@ function RagDashboard({ metrics }: { metrics: RagMetrics | null }) {
   )
 }
 
+const OPERATION_LABELS: Record<string, string> = {
+  router: '路由',
+  rewrite: 'Query Rewrite',
+  generate: '生成回答',
+  agent: 'Agent',
+  direct_reply: '直接回复',
+  summary_update: '会话摘要（后置）',
+  tenant_profile: '租户画像（后置）',
+}
+
+function DistributionChart({ title, metric }: { title: string; metric: TimingMetricSummary }) {
+  const maxCount = Math.max(1, ...metric.distribution.map((item) => item.count))
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <h4 className="font-medium text-slate-900">{title}</h4>
+      <p className="mt-1 text-xs text-slate-400">
+        样本 {metric.count.toLocaleString()} · 平均 {formatMilliseconds(metric.avg_ms)} · P50{' '}
+        {formatMilliseconds(metric.p50_ms)} · P90 {formatMilliseconds(metric.p90_ms)}
+      </p>
+      {metric.count === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">暂无数据</p>
+      ) : (
+        <div className="mt-4 space-y-2">
+          {metric.distribution.map((item) => (
+            <div key={item.bucket}>
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="text-slate-500">{item.bucket}</span>
+                <span className="font-medium text-slate-700">{item.count}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  style={{ width: `${(item.count / maxCount) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TimingDashboard({ metrics, status }: { metrics: TimingStatsResponse | null; status: 'loading' | 'online' | 'offline' }) {
+  if (status === 'offline' || !metrics) {
+    return <p className="text-sm text-slate-500">耗时统计不可用（需 MySQL 持久化与历史问答数据）</p>
+  }
+
+  const llmOps = Object.entries(metrics.llm.by_operation ?? {})
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+        <span>租户：{metrics.tenant_id}</span>
+        <span>·</span>
+        <span>最近 {metrics.period_days} 天</span>
+        <span>·</span>
+        <span>问答轮次 {metrics.total_runs.toLocaleString()}</span>
+        <span>·</span>
+        <span>采集 {formatTimestamp(metrics.collected_at)}</span>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard title="整体耗时（平均）" value={formatMilliseconds(metrics.overall.avg_ms)} subtitle="单轮 SSE 应答完成" />
+        <MetricCard title="Embedding（平均）" value={formatMilliseconds(metrics.embedding.avg_ms)} subtitle="DashScope 向量化" />
+        <MetricCard title="Chroma 检索（平均）" value={formatMilliseconds(metrics.chroma.avg_ms)} subtitle="向量库 query" />
+        <MetricCard title="Rerank（平均）" value={formatMilliseconds(metrics.rerank.avg_ms)} subtitle="BGE 重排序" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DistributionChart title="整体耗时分布" metric={metrics.overall} />
+        <DistributionChart title="Embedding 耗时分布" metric={metrics.embedding} />
+        <DistributionChart title="Chroma 检索耗时分布" metric={metrics.chroma} />
+        <DistributionChart title="Rerank 耗时分布" metric={metrics.rerank} />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 className="font-medium text-slate-900">Qwen 调用耗时</h3>
+        <p className="mt-1 text-xs text-slate-400">
+          每次 LLM invoke 单独计时；一轮 Agent 可能包含多次调用
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <DistributionChart title="全部 LLM 调用分布" metric={metrics.llm} />
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-500">
+                  <th className="px-4 py-3 font-medium">操作</th>
+                  <th className="px-4 py-3 font-medium">次数</th>
+                  <th className="px-4 py-3 font-medium">平均耗时</th>
+                </tr>
+              </thead>
+              <tbody>
+                {llmOps.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-3 text-slate-500">
+                      暂无 LLM 调用记录
+                    </td>
+                  </tr>
+                ) : (
+                  llmOps.map(([operation, item]) => (
+                    <tr key={operation} className="border-b border-slate-100">
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        {OPERATION_LABELS[operation] ?? operation}
+                      </td>
+                      <td className="px-4 py-3">{item.count.toLocaleString()}</td>
+                      <td className="px-4 py-3">{formatMilliseconds(item.avg_ms)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function GatewayDashboard({ metrics }: { metrics: GatewayMetrics | null }) {
   if (!metrics || metrics.tenants.length === 0) {
     return <p className="text-sm text-slate-500">Gateway 服务不可用</p>
@@ -367,7 +496,7 @@ function GatewayDashboard({ metrics }: { metrics: GatewayMetrics | null }) {
 }
 
 export function AdminPage() {
-  const { rag, gateway, ragStatus, gatewayStatus, lastUpdated, refresh } = useAdminMetrics()
+  const { rag, gateway, timing, ragStatus, gatewayStatus, timingStatus, lastUpdated, refresh } = useAdminMetrics()
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -375,13 +504,15 @@ export function AdminPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">系统管理看板</h1>
-            <p className="mt-1 text-sm text-slate-500">RAG 资源消耗与 Gateway 限流统计，每 5 秒自动刷新</p>
+            <p className="mt-1 text-sm text-slate-500">RAG 资源、问答耗时与 Gateway 限流统计，每 5 秒自动刷新</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={ragStatus} />
             <span className="text-xs text-slate-400">RAG</span>
             <StatusBadge status={gatewayStatus} />
             <span className="text-xs text-slate-400">Gateway</span>
+            <StatusBadge status={timingStatus} />
+            <span className="text-xs text-slate-400">耗时</span>
             <button
               type="button"
               onClick={() => void refresh()}
@@ -414,6 +545,11 @@ export function AdminPage() {
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">RAG 资源看板</h2>
         <RagDashboard metrics={rag} />
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">问答耗时统计</h2>
+        <TimingDashboard metrics={timing} status={timingStatus} />
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">

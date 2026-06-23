@@ -4,15 +4,34 @@ from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from langchain_community.chat_message_histories import ChatMessageHistory
-
 from rag.cancellation import begin_run, end_run
 from rag.graph import streaming as streaming_mod
 from rag.graph.streaming import (
     TOKEN_STREAM_NODES,
+    _initial_state,
     _normalize_stream_part,
     stream_graph_response,
 )
+from rag.memory.types import MemoryContext
+
+
+def _empty_memory() -> MemoryContext:
+    return MemoryContext()
+
+
+def test_initial_state_uses_memory_and_clears_messages():
+    memory = MemoryContext(
+        recent_messages=[{"role": "user", "content": "之前的问题"}],
+        recent_messages_text="Human: 之前的问题",
+        conversation_summary="Redis 话题",
+        tenant_profile_summary="关注中间件",
+        window_size=5,
+    )
+    state = _initial_state("当前问题", memory, "thread-1", "tenant-1")
+    assert state["messages"] == []
+    assert state["recent_messages_text"] == "Human: 之前的问题"
+    assert state["conversation_summary"] == "Redis 话题"
+    assert state["tenant_profile_summary"] == "关注中间件"
 
 
 def test_normalize_stream_part_v2():
@@ -66,7 +85,7 @@ def test_generate_message_tokens_are_emitted(mock_graph_stream, mock_build_graph
         stream_graph_response(
             _mock_assistant(),
             "hi",
-            ChatMessageHistory(),
+            _empty_memory(),
             "thread-1",
             "tenant-1",
         )
@@ -93,7 +112,7 @@ def test_direct_reply_message_tokens_are_emitted(mock_graph_stream, mock_build_g
         stream_graph_response(
             _mock_assistant(),
             "hello",
-            ChatMessageHistory(),
+            _empty_memory(),
             "thread-2",
             "tenant-1",
         )
@@ -118,7 +137,7 @@ def test_reject_emits_static_answer_once(mock_graph_stream, mock_build_graph):
         stream_graph_response(
             _mock_assistant(),
             "unknown",
-            ChatMessageHistory(),
+            _empty_memory(),
             "thread-3",
             "tenant-1",
         )
@@ -154,7 +173,7 @@ def test_web_search_done_includes_context_source(mock_graph_stream, mock_build_g
         stream_graph_response(
             _mock_assistant(),
             "unknown topic",
-            ChatMessageHistory(),
+            _empty_memory(),
             "thread-web",
             "tenant-1",
         )
@@ -195,7 +214,7 @@ def test_cancelled_uses_emitted_tokens(mock_is_cancelled, mock_graph_stream, moc
             stream_graph_response(
                 _mock_assistant(),
                 "question",
-                ChatMessageHistory(),
+                _empty_memory(),
                 "thread-4",
                 "tenant-1",
             )

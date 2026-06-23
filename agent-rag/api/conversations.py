@@ -56,6 +56,7 @@ def chat_history(thread_id: str, request: Request) -> ChatHistoryResponse:
         return ChatHistoryResponse(
             thread_id=thread_id,
             collection_name=conversation.collection_name,
+            conversation_summary=conversation.summary,
             messages=[
                 HistoryMessage(
                     id=_message_public_id(msg),

@@ -46,6 +46,16 @@ RAG_NODE_DURATION = Histogram(
     "LangGraph node execution duration in seconds",
     ["node", "tenant"],
 )
+RAG_EMBEDDING_DURATION = Histogram(
+    "rag_embedding_duration_seconds",
+    "DashScope embedding duration in seconds",
+    ["tenant"],
+)
+RAG_LLM_DURATION = Histogram(
+    "rag_llm_duration_seconds",
+    "LLM invocation duration in seconds",
+    ["operation", "tenant"],
+)
 RAG_CHROMA_QUERY_DURATION = Histogram(
     "rag_chroma_query_duration_seconds",
     "Chroma vector query duration in seconds",
@@ -76,6 +86,11 @@ RAG_TAVILY_SEARCH_TOTAL = Counter(
     "rag_tavily_search_total",
     "Total Tavily web search invocations",
     ["status", "tenant"],
+)
+RAG_BUDGET_STOP_TOTAL = Counter(
+    "rag_budget_stop_total",
+    "Requests that hit per-request budget limits",
+    ["reason", "tenant"],
 )
 RAG_CHAT_REQUESTS = Counter(
     "rag_chat_requests_total",
@@ -271,8 +286,10 @@ def metrics_response() -> tuple[bytes, str, dict[str, str]]:
 def _histogram_sum_count(metric: Histogram) -> tuple[float, float]:
     """Read histogram sum/count from a labeled child (prometheus_client >=0.21)."""
     total_sum = metric._sum.get()
-    total_count = metric._buckets[-1].get()
-    return total_sum, total_count
+    for sample in metric.collect()[0].samples:
+        if sample.name.endswith("_count"):
+            return total_sum, sample.value
+    return total_sum, metric._buckets[-1].get()
 
 
 def _histogram_avg_for_tenant(histogram: Histogram, tenant: str, **match_labels: str) -> float | None:
@@ -366,3 +383,11 @@ def observe_node_duration(node: str, tenant: str, duration: float) -> None:
 
 def observe_agent_request(route: str, tenant: str, duration: float) -> None:
     AGENT_REQUEST_DURATION.labels(route=route, tenant=tenant).observe(duration)
+
+
+def observe_embedding_duration(tenant: str, duration: float) -> None:
+    RAG_EMBEDDING_DURATION.labels(tenant=tenant).observe(duration)
+
+
+def observe_llm_duration(operation: str, tenant: str, duration: float) -> None:
+    RAG_LLM_DURATION.labels(operation=operation, tenant=tenant).observe(duration)

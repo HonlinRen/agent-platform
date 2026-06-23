@@ -7,7 +7,8 @@ from typing import Any
 from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session
 
-from db.models import ChatFeedback, ChatMessage, Conversation
+from db.models import ChatFeedback, ChatMessage, Conversation, TenantProfile
+from rag.memory.types import MemoryContextData
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,168 @@ class ConversationRepository:
         ).all()
         rows.reverse()
         return [{"role": row.role, "content": row.content} for row in rows]
+
+    def load_memory_context(
+        self,
+        tenant_id: str,
+        thread_id: str,
+        *,
+        limit: int,
+    ) -> MemoryContextData:
+        conversation = self._session.scalar(
+            select(Conversation).where(
+                Conversation.tenant_id == tenant_id,
+                Conversation.thread_id == thread_id,
+            )
+        )
+        tenant_profile = self._session.scalar(
+            select(TenantProfile).where(TenantProfile.tenant_id == tenant_id)
+        )
+        if conversation is None:
+            return MemoryContextData(
+                conversation_id=None,
+                message_count=0,
+                summary=None,
+                summary_up_to_sequence=0,
+                recent_messages=[],
+                tenant_profile_summary=tenant_profile.profile_summary if tenant_profile else None,
+                tenant_profile_source=tenant_profile.source if tenant_profile else None,
+            )
+
+        rows = self._session.scalars(
+            select(ChatMessage)
+            .where(ChatMessage.conversation_id == conversation.id)
+            .order_by(desc(ChatMessage.sequence))
+            .limit(limit)
+        ).all()
+        rows.reverse()
+        recent = [{"role": row.role, "content": row.content} for row in rows]
+        return MemoryContextData(
+            conversation_id=conversation.id,
+            message_count=conversation.message_count,
+            summary=conversation.summary,
+            summary_up_to_sequence=conversation.summary_up_to_sequence or 0,
+            recent_messages=recent,
+            tenant_profile_summary=tenant_profile.profile_summary if tenant_profile else None,
+            tenant_profile_source=tenant_profile.source if tenant_profile else None,
+        )
+
+    def get_messages_for_summary(
+        self,
+        tenant_id: str,
+        thread_id: str,
+        *,
+        after_sequence: int,
+        before_sequence: int,
+    ) -> list[ChatMessage]:
+        conversation = self._session.scalar(
+            select(Conversation).where(
+                Conversation.tenant_id == tenant_id,
+                Conversation.thread_id == thread_id,
+            )
+        )
+        if conversation is None:
+            return []
+        return list(
+            self._session.scalars(
+                select(ChatMessage)
+                .where(
+                    ChatMessage.conversation_id == conversation.id,
+                    ChatMessage.sequence > after_sequence,
+                    ChatMessage.sequence <= before_sequence,
+                )
+                .order_by(ChatMessage.sequence)
+            ).all()
+        )
+
+    def get_max_message_sequence(self, tenant_id: str, thread_id: str) -> int:
+        conversation = self._session.scalar(
+            select(Conversation).where(
+                Conversation.tenant_id == tenant_id,
+                Conversation.thread_id == thread_id,
+            )
+        )
+        if conversation is None:
+            return 0
+        max_seq = self._session.scalar(
+            select(func.max(ChatMessage.sequence)).where(ChatMessage.conversation_id == conversation.id)
+        )
+        return max_seq or 0
+
+    def update_conversation_summary(
+        self,
+        tenant_id: str,
+        thread_id: str,
+        summary: str,
+        up_to_sequence: int,
+    ) -> None:
+        conversation = self._session.scalar(
+            select(Conversation).where(
+                Conversation.tenant_id == tenant_id,
+                Conversation.thread_id == thread_id,
+            )
+        )
+        if conversation is None:
+            return
+        conversation.summary = summary
+        conversation.summary_up_to_sequence = up_to_sequence
+        conversation.summary_updated_at = datetime.now()
+
+    def get_conversation(
+        self,
+        tenant_id: str,
+        thread_id: str,
+    ) -> Conversation | None:
+        return self._session.scalar(
+            select(Conversation).where(
+                Conversation.tenant_id == tenant_id,
+                Conversation.thread_id == thread_id,
+            )
+        )
+
+    def get_tenant_profile(self, tenant_id: str) -> TenantProfile | None:
+        return self._session.scalar(select(TenantProfile).where(TenantProfile.tenant_id == tenant_id))
+
+    def upsert_tenant_profile(
+        self,
+        tenant_id: str,
+        profile_json: dict[str, Any],
+        profile_summary: str,
+        *,
+        source: str = "auto",
+    ) -> None:
+        row = self.get_tenant_profile(tenant_id)
+        if row is None:
+            self._session.add(
+                TenantProfile(
+                    tenant_id=tenant_id,
+                    profile_json=profile_json,
+                    profile_summary=profile_summary,
+                    source=source,
+                )
+            )
+            return
+        if row.source == "manual" and source == "auto":
+            merged = dict(row.profile_json or {})
+            for key, value in profile_json.items():
+                if key not in merged or not merged.get(key):
+                    merged[key] = value
+            row.profile_json = merged
+            if not row.profile_summary:
+                row.profile_summary = profile_summary
+            return
+        row.profile_json = profile_json
+        row.profile_summary = profile_summary
+        row.source = source
+        row.updated_at = datetime.now()
+
+    def count_tenant_messages(self, tenant_id: str) -> int:
+        total = self._session.scalar(
+            select(func.coalesce(func.sum(Conversation.message_count), 0)).where(
+                Conversation.tenant_id == tenant_id
+            )
+        )
+        return int(total or 0)
 
     def get_full_history(
         self,

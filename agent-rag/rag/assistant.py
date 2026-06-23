@@ -17,7 +17,10 @@ from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
 from rag.knowledge_bases import DEFAULT_COLLECTION, get_domain_hint, validate_collection_name
-from rag.metrics import record_embedding, record_llm, record_retrieval_score
+from rag.memory.formatting import format_memory_placeholder
+from rag.llm_timing import timed_embedding, timed_llm_invoke
+from rag.metrics import record_and_track_llm, record_embedding, record_retrieval_score
+from rag.request_timing import get_request_timing
 from rag.reject import should_reject
 from rag.rerank_local import RERANK_ENABLED, preload_rerank_model, rerank_candidates
 from rag.telemetry import (
@@ -33,7 +36,7 @@ logger = logging.getLogger(__name__)
 VERBOSE_RETRIEVAL = os.environ.get("RAG_VERBOSE_RETRIEVAL", "false").lower() in {"1", "true", "yes"}
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("API_KEY")
 EMBEDDING_MODEL = os.environ.get("DASHSCOPE_EMBEDDING_MODEL", "text-embedding-v3")
-LLM_MODEL = os.environ.get("DASHSCOPE_LLM_MODEL", "qwen3.7-plus")
+LLM_MODEL = os.environ.get("DASHSCOPE_LLM_MODEL", "qwen-plus")
 DASHSCOPE_BASE_URL = os.environ.get(
     "DASHSCOPE_BASE_URL",
     "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -56,7 +59,7 @@ def build_system_prompt(domain_hint: str) -> str:
 1. 必须优先依据 LOCAL DOCUMENT 中提供的本地知识库内容回答。
 2. 如果使用了 LOCAL DOCUMENT 中的信息，必须在相关句子后标注来源，格式为：[来源：文件名 第N页]。
 3. 如果 LOCAL DOCUMENT 中没有足够依据，请明确说明“本地知识库上下文中未找到充分依据”，不要编造。
-4. 不要引用 CHAT HISTORY 作为事实来源，CHAT HISTORY 只用于理解上下文。"""
+4. 不要引用 CHAT HISTORY、会话摘要或租户背景作为事实来源，这些只用于理解上下文。"""
 
 
 def build_direct_system_prompt(domain_hint: str) -> str:
@@ -73,7 +76,7 @@ def build_web_system_prompt(domain_hint: str) -> str:
 1. 回答开头或首段必须明确声明：以下信息来自互联网公开检索，非本地知识库内容。
 2. 引用 WEB DOCUMENT 中的信息时，使用格式：[来源：标题 URL]。
 3. 不得将互联网信息伪装成本地知识库文档依据。
-4. 不要引用 CHAT HISTORY 作为事实来源，CHAT HISTORY 只用于理解上下文。"""
+4. 不要引用 CHAT HISTORY、会话摘要或租户背景作为事实来源，这些只用于理解上下文。"""
 
 
 def build_hybrid_system_prompt(domain_hint: str) -> str:
@@ -85,7 +88,7 @@ def build_hybrid_system_prompt(domain_hint: str) -> str:
 2. 引用 LOCAL DOCUMENT 时使用格式：[来源：文件名 第N页]。
 3. 引用 WEB DOCUMENT 时使用格式：[来源：标题 URL]，并明确该部分来自互联网公开检索。
 4. 不得将互联网信息伪装成本地知识库依据。
-5. 不要引用 CHAT HISTORY 作为事实来源，CHAT HISTORY 只用于理解上下文。"""
+5. 不要引用 CHAT HISTORY、会话摘要或租户背景作为事实来源，这些只用于理解上下文。"""
 
 
 def _snippet(text: str, max_len: int = 50) -> str:
@@ -123,6 +126,14 @@ def _build_chat_llm(*, api_key: str, streaming: bool, temperature: float) -> Cha
     )
 
 
+def _memory_context_block() -> str:
+    return (
+        "【租户背景】\n{tenant_profile_summary}\n\n"
+        "【会话摘要】\n{conversation_summary}\n\n"
+        "【最近对话】\n{recent_messages_text}\n\n"
+    )
+
+
 class CarSafetyWhitepaperAssistant:
     def __init__(self, collection_name: str | None = None) -> None:
         if not DASHSCOPE_API_KEY:
@@ -153,74 +164,95 @@ class CarSafetyWhitepaperAssistant:
         if RERANK_ENABLED:
             preload_rerank_model()
         self.rewrite_prompt = PromptTemplate(
-            input_variables=["human_input", "chat_history"],
+            input_variables=[
+                "human_input",
+                "tenant_profile_summary",
+                "conversation_summary",
+                "recent_messages_text",
+            ],
             template=(
-                "你是一个检索问题改写助手。请根据最近对话历史，将用户当前问题改写成一个语义完整、适合向量检索的独立问题。\n"
+                "你是一个检索问题改写助手。请根据租户背景、会话摘要和最近对话，"
+                "将用户当前问题改写成一个语义完整、适合向量检索的独立问题。\n"
                 "要求：\n"
                 "1. 只输出改写后的问题，不要回答问题。\n"
                 "2. 如果当前问题已经完整，不要扩写无关信息。\n"
                 f"3. 保留{domain_hint}相关的关键实体、约束和指代关系。\n\n"
-                "=====BEGIN CHAT HISTORY=====\n"
-                "{chat_history}\n"
-                "=====END CHAT HISTORY=====\n\n"
-                "当前问题：{human_input}\n"
+                + _memory_context_block()
+                + "当前问题：{human_input}\n"
                 "改写后问题："
             ),
         )
+        memory_block = _memory_context_block()
         self.prompt = PromptTemplate(
-            input_variables=["human_input", "context", "chat_history"],
+            input_variables=[
+                "human_input",
+                "context",
+                "tenant_profile_summary",
+                "conversation_summary",
+                "recent_messages_text",
+            ],
             template=(
                 self.system_prompt
-                + "\n\n=====BEGIN LOCAL DOCUMENT=====\n"
+                + "\n\n"
+                + memory_block
+                + "=====BEGIN LOCAL DOCUMENT=====\n"
                 + "{context}\n"
                 + "=====END LOCAL DOCUMENT=====\n\n"
-                + "=====BEGIN CHAT HISTORY=====\n"
-                + "{chat_history}\n"
-                + "=====END CHAT HISTORY=====\n\n"
                 + "=====BEGIN CONVERSATION=====\n"
                 + "Human: {human_input}\n"
                 + "AI:"
             ),
         )
         self.web_prompt = PromptTemplate(
-            input_variables=["human_input", "context", "chat_history"],
+            input_variables=[
+                "human_input",
+                "context",
+                "tenant_profile_summary",
+                "conversation_summary",
+                "recent_messages_text",
+            ],
             template=(
                 self.web_system_prompt
-                + "\n\n=====BEGIN WEB DOCUMENT=====\n"
+                + "\n\n"
+                + memory_block
+                + "=====BEGIN WEB DOCUMENT=====\n"
                 + "{context}\n"
                 + "=====END WEB DOCUMENT=====\n\n"
-                + "=====BEGIN CHAT HISTORY=====\n"
-                + "{chat_history}\n"
-                + "=====END CHAT HISTORY=====\n\n"
                 + "=====BEGIN CONVERSATION=====\n"
                 + "Human: {human_input}\n"
                 + "AI:"
             ),
         )
         self.hybrid_prompt = PromptTemplate(
-            input_variables=["human_input", "local_context", "web_context", "chat_history"],
+            input_variables=[
+                "human_input",
+                "local_context",
+                "web_context",
+                "tenant_profile_summary",
+                "conversation_summary",
+                "recent_messages_text",
+            ],
             template=(
                 self.hybrid_system_prompt
-                + "\n\n=====BEGIN LOCAL DOCUMENT=====\n"
+                + "\n\n"
+                + memory_block
+                + "=====BEGIN LOCAL DOCUMENT=====\n"
                 + "{local_context}\n"
                 + "=====END LOCAL DOCUMENT=====\n\n"
                 + "=====BEGIN WEB DOCUMENT=====\n"
                 + "{web_context}\n"
                 + "=====END WEB DOCUMENT=====\n\n"
-                + "=====BEGIN CHAT HISTORY=====\n"
-                + "{chat_history}\n"
-                + "=====END CHAT HISTORY=====\n\n"
                 + "=====BEGIN CONVERSATION=====\n"
                 + "Human: {human_input}\n"
                 + "AI:"
             ),
         )
 
-    def recall_candidates(self, query: str) -> list[dict[str, Any]]:
+    def recall_candidates(self, query: str, *, thread_id: str | None = None) -> list[dict[str, Any]]:
         tenant = get_tenant_id() or "default_tenant"
         with span("dashscope.embedding"):
             record_embedding()
-            vec = self.embeddings.embed_query(query)
+            vec = timed_embedding(lambda: self.embeddings.embed_query(query), thread_id=thread_id)
 
         recall_count = max(RETRIEVAL_TOP_N, RETRIEVAL_FINAL_TOP_K)
         chroma_start = time.perf_counter()
@@ -230,9 +262,11 @@ class CarSafetyWhitepaperAssistant:
                 n_results=recall_count,
                 include=["documents", "metadatas", "distances"],
             )
-        RAG_CHROMA_QUERY_DURATION.labels(tenant=tenant, collection=self.collection_name).observe(
-            time.perf_counter() - chroma_start
-        )
+        chroma_ms = int((time.perf_counter() - chroma_start) * 1000)
+        RAG_CHROMA_QUERY_DURATION.labels(tenant=tenant, collection=self.collection_name).observe(chroma_ms / 1000.0)
+        timing = get_request_timing(thread_id)
+        if timing is not None:
+            timing.record_chroma(chroma_ms)
 
         candidates: list[dict[str, Any]] = []
         documents = (result.get("documents") or [[]])[0]
@@ -247,18 +281,20 @@ class CarSafetyWhitepaperAssistant:
         RAG_RETRIEVAL_CANDIDATES.labels(tenant=tenant, collection=self.collection_name).observe(len(candidates))
         return candidates
 
-    def retrieve_and_rank(self, query: str) -> list[dict[str, Any]]:
+    def retrieve_and_rank(self, query: str, *, thread_id: str | None = None) -> list[dict[str, Any]]:
         tenant = get_tenant_id() or "default_tenant"
         with span("rag.retrieve", {"rag.collection": self.collection_name}):
-            candidates = self.recall_candidates(query)
+            candidates = self.recall_candidates(query, thread_id=thread_id)
             self._log_retrieval_candidates(query, candidates)
 
             rerank_start = time.perf_counter()
             with span("rerank"):
                 ranked = rerank_candidates(query, candidates, top_k=RETRIEVAL_FINAL_TOP_K)
-            RAG_RERANK_DURATION.labels(tenant=tenant, collection=self.collection_name).observe(
-                time.perf_counter() - rerank_start
-            )
+            rerank_ms = int((time.perf_counter() - rerank_start) * 1000)
+            RAG_RERANK_DURATION.labels(tenant=tenant, collection=self.collection_name).observe(rerank_ms / 1000.0)
+            timing = get_request_timing(thread_id)
+            if timing is not None:
+                timing.record_rerank(rerank_ms)
 
             if ranked:
                 top_score = ranked[0].get("rerank_score")
@@ -369,6 +405,102 @@ class CarSafetyWhitepaperAssistant:
             "sources": sorted(sources),
         }
 
+    def _memory_prompt_fields(
+        self,
+        *,
+        tenant_profile_summary: str = "",
+        conversation_summary: str = "",
+        recent_messages_text: str = "无历史对话",
+    ) -> dict[str, str]:
+        return {
+            "tenant_profile_summary": format_memory_placeholder(tenant_profile_summary),
+            "conversation_summary": format_memory_placeholder(conversation_summary),
+            "recent_messages_text": recent_messages_text or "无历史对话",
+        }
+
+    def rewrite_query_with_memory(
+        self,
+        query: str,
+        *,
+        tenant_profile_summary: str = "",
+        conversation_summary: str = "",
+        recent_messages_text: str = "无历史对话",
+        thread_id: str | None = None,
+    ) -> str:
+        if (
+            recent_messages_text == "无历史对话"
+            and not conversation_summary.strip()
+            and not tenant_profile_summary.strip()
+        ):
+            return query
+
+        fields = self._memory_prompt_fields(
+            tenant_profile_summary=tenant_profile_summary,
+            conversation_summary=conversation_summary,
+            recent_messages_text=recent_messages_text,
+        )
+        chain = self.rewrite_prompt | self.llm
+        with span("rag.llm.invoke", {"rag.operation": "rewrite"}):
+            rewritten_query = timed_llm_invoke(
+                "rewrite",
+                lambda: chain.invoke({"human_input": query, **fields}),
+                fallback_text=query,
+                thread_id=thread_id,
+            )
+        rewritten_query_text = llm_output_to_text(rewritten_query)
+        logger.info("rewritten query: %s", rewritten_query_text, extra=log_extra())
+        if VERBOSE_RETRIEVAL:
+            logger.debug("rewritten query detail: %s", rewritten_query_text, extra=log_extra())
+        return rewritten_query_text or query
+
+    def rewrite_query(self, query: str, history: ChatMessageHistory) -> str:
+        chat_history = self.get_chat_history_text(history)
+        return self.rewrite_query_with_memory(
+            query,
+            recent_messages_text=chat_history,
+        )
+
+    def generate_prompt_inputs(
+        self,
+        query: str,
+        context: str,
+        *,
+        tenant_profile_summary: str = "",
+        conversation_summary: str = "",
+        recent_messages_text: str = "无历史对话",
+    ) -> dict[str, str]:
+        return {
+            "human_input": query,
+            "context": context,
+            **self._memory_prompt_fields(
+                tenant_profile_summary=tenant_profile_summary,
+                conversation_summary=conversation_summary,
+                recent_messages_text=recent_messages_text,
+            ),
+        }
+
+    def hybrid_prompt_inputs(
+        self,
+        query: str,
+        local_context: str,
+        web_context: str,
+        *,
+        tenant_profile_summary: str = "",
+        conversation_summary: str = "",
+        recent_messages_text: str = "无历史对话",
+    ) -> dict[str, str]:
+        fields = self._memory_prompt_fields(
+            tenant_profile_summary=tenant_profile_summary,
+            conversation_summary=conversation_summary,
+            recent_messages_text=recent_messages_text,
+        )
+        return {
+            "human_input": query,
+            "local_context": local_context,
+            "web_context": web_context,
+            **fields,
+        }
+
     def get_chat_history_text(self, history: ChatMessageHistory) -> str:
         recent_messages = history.messages[-WINDOW_SIZE * 2 :]
         history_parts: list[str] = []
@@ -386,20 +518,6 @@ class CarSafetyWhitepaperAssistant:
                 messages.append(AIMessage(content=message.content))
         return messages
 
-    def rewrite_query(self, query: str, history: ChatMessageHistory) -> str:
-        chat_history = self.get_chat_history_text(history)
-        if chat_history == "无历史对话":
-            return query
-
-        chain = self.rewrite_prompt | self.llm
-        with span("rag.llm.invoke", {"rag.operation": "rewrite"}):
-            record_llm()
-            rewritten_query = chain.invoke({"human_input": query, "chat_history": chat_history})
-        rewritten_query_text = llm_output_to_text(rewritten_query)
-        logger.info("rewritten query: %s", rewritten_query_text, extra=log_extra())
-        if VERBOSE_RETRIEVAL:
-            logger.debug("rewritten query detail: %s", rewritten_query_text, extra=log_extra())
-        return rewritten_query_text or query
     def check_retrieval_quality(self, ranked: list[dict[str, Any]]) -> tuple[bool, str]:
         return should_reject(ranked)
 
@@ -411,14 +529,14 @@ class CarSafetyWhitepaperAssistant:
             return msg
         context = self.format_context(ranked)
         chain = self.prompt | self.llm
-        record_llm()
         response = chain.invoke(
-            {
-                "human_input": query,
-                "context": context,
-                "chat_history": self.get_chat_history_text(history),
-            }
+            self.generate_prompt_inputs(
+                query,
+                context,
+                recent_messages_text=self.get_chat_history_text(history),
+            )
         )
+        record_and_track_llm(response, fallback_text=query)
         return llm_output_to_text(response)
 
     def stream_response(self, query: str, history: ChatMessageHistory) -> Iterator[dict[str, Any]]:
@@ -445,12 +563,11 @@ class CarSafetyWhitepaperAssistant:
 
         yield {"type": "status", "stage": "generate", "node": "generate"}
         chain = self.prompt | self.llm
-        record_llm()
-        prompt_inputs = {
-            "human_input": query,
-            "context": context,
-            "chat_history": self.get_chat_history_text(history),
-        }
+        prompt_inputs = self.generate_prompt_inputs(
+            query,
+            context,
+            recent_messages_text=self.get_chat_history_text(history),
+        )
 
         parts: list[str] = []
         for chunk in chain.stream(prompt_inputs):
@@ -461,6 +578,7 @@ class CarSafetyWhitepaperAssistant:
             yield {"type": "token", "content": text}
 
         full_response = "".join(parts).strip()
+        record_and_track_llm(full_response, fallback_text=full_response or query)
         yield {
             "type": "done",
             "content": full_response,

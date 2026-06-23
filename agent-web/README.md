@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# agent-web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Agent 平台前端：RAG 聊天 UI、多租户切换、SSE 流式展示与管理看板。
 
-Currently, two official plugins are available:
+| 项 | 说明 |
+|----|------|
+| 技术栈 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 |
+| 默认端口 | **5173** |
+| 上游依赖 | [agent-gateway](https://github.com/HonlinRen/agent-gateway)（8080）→ [agent-rag](https://github.com/HonlinRen/agent-rag)（8081） |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 功能
 
-## React Compiler
+- **`/`** 智能问答：多会话、SSE 流式回复、引用溯源、Agent 工具链路与联网检索展示
+- **`/admin`** 管理看板：RAG / Gateway 指标、问答耗时分布、用户画像
+- **多租户**：请求头携带 `X-Tenant-Id`，429 限流友好提示
+- **JWT（可选）**：聊天页可填写 Bearer Token，供网关 JWT 鉴权联调
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 快速启动
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+浏览器打开 http://localhost:5173
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+开发模式下，Vite 将 API 代理到网关（`vite.config.ts`）：
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| 前端路径 | 代理目标 |
+|----------|----------|
+| `/api` | `http://127.0.0.1:8080` |
+| `/health` | `http://127.0.0.1:8080` |
+| `/admin/gateway`、`/admin/rag` | `http://127.0.0.1:8080` |
+
+因此通常**无需**设置 `VITE_API_BASE_URL`；直连 RAG 调试时可设为 `http://127.0.0.1:8081`。
+
+## 配置
+
+复制 `.env.example` 为 `.env`（可选，观测链接等）。
+
+知识库展示由 `config/knowledge-bases.json` 控制：
+
+```json
+{
+  "visibleInChat": ["semiconductor"],
+  "defaultChatCollection": "semiconductor"
+}
+```
+
+名称与描述见 `src/constants/knowledgeBases.ts`。
+
+## 推荐联调顺序
+
+1. Redis（6379）→ agent-rag（8081）→ agent-gateway（8080）→ **本仓库**（5173）
+2. 聊天页显示「后端在线」、`/admin` 能加载双服务指标即表示联调成功
+
+全栈架构与接口说明见 [agent-rag/README.md](https://github.com/HonlinRen/agent-rag/blob/master/README.md)。
+
+## 常用命令
+
+```bash
+npm run dev      # 开发
+npm run build    # 构建
+npm run preview  # 预览构建产物
+npm run lint     # ESLint
 ```

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 import uuid
 from collections.abc import Iterator
@@ -13,12 +12,21 @@ from fastapi.responses import StreamingResponse
 from api.deps import get_assistant
 from api.errors import sanitize_chat_error
 from api.schemas import ChatStopRequest, ChatStopResponse, ChatStreamRequest
-from db.repository import ConversationRepository, save_turn_best_effort
-from db.session import get_db
-from rag.assistant import CarSafetyWhitepaperAssistant, rebuild_history
+from db.repository import save_turn_best_effort
+from db.timing_repository import save_timing_best_effort
+from rag.assistant import CarSafetyWhitepaperAssistant
 from rag.cancellation import begin_run, end_run, request_cancel
 from rag.graph.streaming import stream_graph_response
 from rag.knowledge_bases import validate_collection_name
+from rag.memory.manager import MemoryManager
+from rag.memory.summary import maybe_update_summary_best_effort
+from rag.memory.tenant_profile import maybe_update_tenant_profile_best_effort
+from rag.request_timing import (
+    clear_pending_timing,
+    clear_timing_append_run_id,
+    pop_pending_timing,
+    set_timing_append_run_id,
+)
 from rag.telemetry import (
     bind_request_context,
     current_trace_id,
@@ -31,8 +39,6 @@ from rag.telemetry import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
-
-WINDOW_SIZE = int(os.environ.get("CHAT_WINDOW_SIZE", "5"))
 
 
 def _format_sse(event: str, data: dict) -> str:
@@ -52,22 +58,76 @@ def _resolve_tenant_id(http_request: Request) -> str:
     return http_request.headers.get("X-Tenant-Id") or "default_tenant"
 
 
-def _load_history_items(
+def _load_memory_context(
     tenant_id: str,
     thread_id: str,
     request: ChatStreamRequest,
-) -> list[dict[str, str]]:
-    try:
-        with get_db() as session:
-            db_history = ConversationRepository(session).load_recent_messages(
-                tenant_id, thread_id, limit=WINDOW_SIZE * 2
-            )
-        if db_history:
-            return db_history
-    except Exception:
-        logger.exception("Failed to load history from MySQL, falling back to client history")
+):
+    fallback = [{"role": item.role, "content": item.content} for item in request.history]
+    return MemoryManager.load_best_effort(
+        tenant_id,
+        thread_id,
+        fallback_messages=fallback,
+    )
 
-    return [{"role": item.role, "content": item.content} for item in request.history]
+
+def _memory_metadata(memory) -> dict:
+    return {"memory": memory.to_metadata()}
+
+
+def _persist_timing_from_event(
+    event: dict,
+    *,
+    tenant_id: str,
+    thread_id: str,
+    collection_name: str,
+    status: str,
+) -> str | None:
+    timing_snapshot = event.get("timing_snapshot")
+    elapsed_ms = event.get("elapsed_ms")
+    run_id = event.get("run_id") or current_trace_id()
+    if elapsed_ms is None or not timing_snapshot:
+        pending = pop_pending_timing(tenant_id, thread_id)
+        if pending:
+            if elapsed_ms is None:
+                elapsed_ms = pending.get("elapsed_ms")
+            if not timing_snapshot:
+                timing_snapshot = pending.get("timing_snapshot")
+    if elapsed_ms is None:
+        return run_id
+    if not timing_snapshot:
+        timing_snapshot = {}
+    save_timing_best_effort(
+        tenant_id=tenant_id,
+        thread_id=thread_id,
+        request_id=get_request_id(),
+        trace_run_id=run_id,
+        route=event.get("route") or "rag",
+        status=status,
+        total_ms=int(elapsed_ms),
+        timing_snapshot=timing_snapshot,
+        collection_name=collection_name,
+    )
+    clear_pending_timing(tenant_id, thread_id)
+    return run_id
+
+
+def _run_post_turn_updates(
+    assistant: CarSafetyWhitepaperAssistant,
+    tenant_id: str,
+    thread_id: str,
+    trace_run_id: str | None,
+) -> None:
+    if not trace_run_id:
+        maybe_update_summary_best_effort(assistant, tenant_id, thread_id)
+        maybe_update_tenant_profile_best_effort(assistant, tenant_id, thread_id)
+        return
+    set_timing_append_run_id(trace_run_id)
+    try:
+        maybe_update_summary_best_effort(assistant, tenant_id, thread_id)
+        maybe_update_tenant_profile_best_effort(assistant, tenant_id, thread_id)
+    finally:
+        clear_timing_append_run_id()
 
 
 def _stream_chat_events(
@@ -83,8 +143,7 @@ def _stream_chat_events(
         yield _format_sse("error", {"message": "消息不能为空", "request_id": get_request_id()})
         return
 
-    history_items = _load_history_items(tenant_id, thread_id, request)
-    history = rebuild_history(history_items)
+    memory = _load_memory_context(tenant_id, thread_id, request)
 
     stream_start = time.perf_counter()
     final_route = "rag"
@@ -93,7 +152,7 @@ def _stream_chat_events(
     begin_run(tenant_id, thread_id)
     try:
         with span("rag.chat.stream", {"rag.collection": collection_name}):
-            for event in stream_graph_response(assistant, message, history, thread_id, tenant_id):
+            for event in stream_graph_response(assistant, message, memory, thread_id, tenant_id):
                 event_type = event.get("type")
                 if event_type == "status":
                     payload: dict = {"stage": event.get("stage")}
@@ -125,7 +184,14 @@ def _stream_chat_events(
                         "run_id": run_id,
                         "citations": event.get("citations") or [],
                         "context_source": event.get("context_source", "local"),
+                        **_memory_metadata(memory),
                     }
+                    if event.get("budget_stop_reason"):
+                        metadata["budget_stop_reason"] = event["budget_stop_reason"]
+                    if event.get("total_tokens_used") is not None:
+                        metadata["total_tokens_used"] = event["total_tokens_used"]
+                    if event.get("elapsed_ms") is not None:
+                        metadata["elapsed_ms"] = event["elapsed_ms"]
                     save_turn_best_effort(
                         tenant_id=tenant_id,
                         thread_id=thread_id,
@@ -136,6 +202,14 @@ def _stream_chat_events(
                         user_message_id=request.user_message_id,
                         assistant_message_id=request.assistant_message_id,
                     )
+                    trace_run_id = _persist_timing_from_event(
+                        event,
+                        tenant_id=tenant_id,
+                        thread_id=thread_id,
+                        collection_name=collection_name,
+                        status="success",
+                    )
+                    _run_post_turn_updates(assistant, tenant_id, thread_id, trace_run_id)
                     yield _format_sse(
                         "done",
                         {
@@ -147,6 +221,9 @@ def _stream_chat_events(
                             "run_id": run_id,
                             "citations": event.get("citations") or [],
                             "context_source": event.get("context_source", "local"),
+                            "budget_stop_reason": event.get("budget_stop_reason"),
+                            "total_tokens_used": event.get("total_tokens_used"),
+                            "elapsed_ms": event.get("elapsed_ms"),
                         },
                     )
                 elif event_type == "cancelled":
@@ -162,6 +239,7 @@ def _stream_chat_events(
                         "citations": event.get("citations") or [],
                         "context_source": event.get("context_source", "local"),
                         "stopped": True,
+                        **_memory_metadata(memory),
                     }
                     if content:
                         save_turn_best_effort(
@@ -174,6 +252,13 @@ def _stream_chat_events(
                             user_message_id=request.user_message_id,
                             assistant_message_id=request.assistant_message_id,
                         )
+                    _persist_timing_from_event(
+                        event,
+                        tenant_id=tenant_id,
+                        thread_id=thread_id,
+                        collection_name=collection_name,
+                        status="cancelled",
+                    )
                     yield _format_sse(
                         "cancelled",
                         {
@@ -193,6 +278,19 @@ def _stream_chat_events(
     except Exception as exc:
         logger.exception("chat stream failed", extra={"request_id": get_request_id()})
         record_chat_request(final_route, tenant_id, "error")
+        pending = pop_pending_timing(tenant_id, thread_id)
+        if pending:
+            save_timing_best_effort(
+                tenant_id=tenant_id,
+                thread_id=thread_id,
+                request_id=get_request_id(),
+                trace_run_id=pending["trace_run_id"],
+                route=final_route or pending.get("route") or "rag",
+                status="error",
+                total_ms=int(pending["elapsed_ms"]),
+                timing_snapshot=pending["timing_snapshot"],
+                collection_name=collection_name,
+            )
         yield _format_sse(
             "error",
             {"message": sanitize_chat_error(exc), "request_id": get_request_id()},

@@ -1,0 +1,424 @@
+{
+  "mode": "api",
+  "total": 8,
+  "average_score": 4.25,
+  "hallucination_rate": 0.125,
+  "point_hit_rate": 0.8830357142857143,
+  "generated_at": "2026-06-09T02:22:47.536438+00:00",
+  "cases": [
+    {
+      "question": "2021年中国云计算行业市场规模是多少？这对逻辑芯片行业有什么影响？",
+      "gold_answer": "2021年中国云计算行业市场规模增至3229亿元。日益增长的云计算市场规模驱动逻辑芯片行业技术迭代加速，促进CPU等厂商提供性能超强、效率超高、可扩展超强的CPU产品。",
+      "reference_doc": "China_Logic_Chip_36.pdf",
+      "must_have_points": [
+        "3229亿元",
+        "云计算市场规模",
+        "逻辑芯片技术迭代",
+        "CPU"
+      ],
+      "model_answer": "以下信息来自互联网公开检索，非本地知识库内容。\n\n关于2021年中国云计算行业市场规模及其对逻辑芯片行业的影响，具体情况如下：\n\n**1. 2021年中国云计算行业市场规模**\n2021年，中国云计算行业市场规模增至3,229亿元[来源：[PDF] 2023年半导体芯片行业系列研究 https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf]。\n\n**2. 对逻辑芯片行业的影响**\n日益增长的云计算行业市场规模驱动了逻辑芯片行业技术迭代的加速[来源：[PDF] 2023年半导体芯片行业系列研究 https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf]。具体影响主要体现在以下几个方面：\n* **促进产品升级**：促使CPU等厂商提供性能超强、效率超高、可扩展超强的CPU产品，例如谷歌的TPU系列和寒武纪的MLU系列[来源：[PDF] 2023年半导体芯片行业系列研究 https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf]。\n* **性能与成本平衡需求**：云计算用户通常需要CPU具有超高的性能，以支持海量数据的存储、计算、分析等需求；同时也需要考虑功耗和成本的因素，以优化资源利用率和运营成本[来源：[PDF] 2023年半导体芯片行业系列研究 https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf]。\n* **效率与稳定性要求**：云计算需要CPU具有超高的效率，以提高服务的响应速度和质量，并且需要兼顾系统的稳定性[来源：[PDF] 2023年半导体芯片行业系列研究 https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf]。",
+      "route": "web",
+      "citations": [
+        {
+          "source": "[PDF] 2023年半导体芯片行业系列研究",
+          "url": "https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "我国逻辑芯片行业产业链分析：中游市场规模持续扩容 但上游高度依赖进口_观研报告网",
+          "url": "https://m.chinabaogao.com/detail/699458.html",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "[PDF] 逻辑芯片头豹词条报告系列",
+          "url": "https://pdf.dfcfw.com/pdf/H3_AP202308071593431740_1.pdf?1691442544000.pdf=",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "中国云市场的新逻辑 - 21财经",
+          "url": "http://www.21jingji.com/article/20220425/herald/5fdee446e066aaca14e3e7edc2fcf553.html",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "[PDF] 云计算白皮书 - 中国信息通信研究院",
+          "url": "http://www.caict.ac.cn/kxyj/qwfb/bps/202107/P020210727458966329996.pdf",
+          "page": "web",
+          "type": "web"
+        }
+      ],
+      "latency_ms": 47986,
+      "judge": {
+        "score": 5,
+        "hit_points": [
+          "3229亿元",
+          "云计算市场规模",
+          "逻辑芯片技术迭代",
+          "CPU"
+        ],
+        "missing_points": [],
+        "hallucination": false,
+        "reason": "模型回答完全覆盖了所有关键评分点，准确回答了2021年中国云计算行业市场规模（3229亿元）及其对逻辑芯片行业的影响（驱动技术迭代加速，促进CPU等厂商提供高性能产品），语义与标准答案高度一致，且补充的细节均有来源标注，无严重幻觉。"
+      }
+    },
+    {
+      "question": "当前逻辑芯片制程的技术制高点是多少？制程升级对材料提出了什么要求？",
+      "gold_answer": "5nm制程是目前业界技术工艺制高点。随着未来制程的不断升级，对前驱体材料同样提出了更高的要求。",
+      "reference_doc": "China_Logic_Chip_36.pdf",
+      "must_have_points": [
+        "5nm",
+        "制程",
+        "前驱体材料",
+        "技术迭代周期缩短"
+      ],
+      "model_answer": "以下信息来自互联网公开检索，非本地知识库内容。\n\n**一、 当前逻辑芯片制程的技术制高点**\n根据行业研究报告指出，5nm制程是目前业界技术工艺制高点[来源：[PDF] 2023年半导体芯片行业系列研究 https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf]。同时，从头部晶圆代工企业的实际量产进度来看，技术节点仍在不断突破，例如台积电已于2022年领先业界成功大量量产3nm（N3）鳍式场效晶体管技术，并规划了采用第一代纳米片（Nanosheet）晶体管技术的2nm（N2）以及结合超级电轨（SPR）解决方案的A16等下一代先进制程[来源：逻辑制程 - 台湾积体电路制造股份有限公司 https://www.tsmc.com/schinese/dedicatedFoundry/technology/logic]。\n\n**二、 制程升级对材料提出的要求**\n随着逻辑芯片制程的不断微缩和晶体管架构的演进，对半导体制造材料提出了更为严苛的要求，主要体现在以下几个方面：\n\n1. **前驱体材料**：先进前驱体材料是决定集成电路先进制程的关键。例如，FinFET结构需要能够填充3D高纵深比沟槽的前驱体材料；随着半导体结构从FinFET向Gate All Around（GAA，全环绕栅极）变化，需要使用插片全环绕等新的栅极材料，对颗粒和凹陷进行更精确的控制并获得更高的平坦度，才能在晶片上实现最佳的晶体取向[来源：[PDF] 2023年半导体芯片行业系列研究 https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf]。\n2. **CMP（化学机械抛光）材料**：芯片制程缩小导致CMP工艺步骤不断增加（以逻辑芯片为例，14nm节点平均需21次，7nm及以下节点甚至超过30次）。先进制程对纳米级全局平坦化的要求极高，这直接带动了CMP抛光液、抛光垫等耗材以及设备内部维保更新需求的量价齐升[来源：[PDF] 先进制程驱动市场扩容,细分环节国产替代加速 https://pdf.dfcfw.com/pdf/H3_AP202501211642400000_1.pdf?1737470659000.pdf=]。\n3. **光刻胶材料**：制程的微缩需要更精细的光刻工艺。这要求使用高分辨率的光刻胶（如193nm ArF光刻胶，含干式及浸润式），并搭配底部抗反射涂层（BARC），以提供全套光刻胶组合来确保更精细的Contact/Via Hole等图形工艺，满足先进逻辑和存储等领域的需求[来源：[PDF] 先进制程驱动市场扩容,细分环节国产替代加速 https://pdf.dfcfw.com/pdf/H3_AP202501211642400000_1.pdf?1737470659000.pdf=]。",
+      "route": "rag",
+      "citations": [
+        {
+          "source": "[PDF] 2023年半导体芯片行业系列研究",
+          "url": "https://pdf.dfcfw.com/pdf/H3_AP202401051616658453_1.pdf",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "[PDF] 先进制程驱动市场扩容,细分环节国产替代加速",
+          "url": "https://pdf.dfcfw.com/pdf/H3_AP202501211642400000_1.pdf?1737470659000.pdf=",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "半导体制造行业深度报告：从um级制造到nm级制造",
+          "url": "https://www.laserfair.com/yingyong/202006/29/77180.html",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "逻辑制程 - 台湾积体电路制造股份有限公司",
+          "url": "https://www.tsmc.com/schinese/dedicatedFoundry/technology/logic",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "先进逻辑制程",
+          "url": "https://www.appliedmaterials.com/cn/zh_cn/semiconductor/markets-and-inflections/advanced-logic.html",
+          "page": "web",
+          "type": "web"
+        }
+      ],
+      "latency_ms": 67311,
+      "judge": {
+        "score": 4,
+        "hit_points": [
+          "5nm",
+          "制程",
+          "前驱体材料"
+        ],
+        "missing_points": [
+          "技术迭代周期缩短"
+        ],
+        "hallucination": false,
+        "reason": "模型回答正确指出了当前逻辑芯片制程的技术制高点为5nm，并详细说明了制程升级对前驱体材料等提出的要求，命中了“5nm”、“制程”、“前驱体材料”等关键评分点。但回答中未提及“技术迭代周期缩短”这一关键评分点，存在轻微遗漏。此外，模型引入了外部知识补充了CMP和光刻胶等材料的要求，虽超出标准答案范围，但内容真实且明确声明了来源，未捏造虚假事实，不构成严重幻觉。综合评定为4分。"
+      }
+    },
+    {
+      "question": "海光信息成立于哪一年？公司主要业务是什么？2022年推出了什么CPU产品？",
+      "gold_answer": "海光信息技术股份有限公司成立于2014年，主要从事高端处理器、加速器等计算芯片产品和系统的研究、开发。公司是中国少数几家同时具备高端通用处理器（CPU）和协处理器（DCU）研发能力的集成电路设计企业。2022年，公司成功推出CPU产品海光三号，与在售的海光二号广泛应用于电信、金融、互联网、教育、交通等重要行业或领域。",
+      "reference_doc": "China_Logic_Chip_36.pdf",
+      "must_have_points": [
+        "2014",
+        "CPU",
+        "DCU",
+        "海光三号",
+        "海光二号"
+      ],
+      "model_answer": "以下信息来自互联网公开检索，非本地知识库内容。\n\n**1. 成立时间**\n海光信息成立于2014年（具体为2014年10月24日）[来源：海光信息技术股份有限公司 https://baike.baidu.com/item/%E6%B5%B7%E5%85%89%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%E8%82%A1%E4%BB%BD%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8/60701190]。\n\n**2. 主要业务**\n公司主要从事高端通用处理器（CPU）、深度计算处理器（DCU）等芯片产品的设计、研发及销售工作，产品主要应用于服务器、工作站等计算、存储设备中[来源：海光信息介绍 - LMG 2025 http://lmg.cipsc.org.cn/conference/lmg2025/sponsor/haiguang/index.html] [来源：海光信息启动科创板上市询价：扭亏首年净利4.38亿元 多名重要客户大幅增加采购额 国产CPU的机遇来了 https://m.cls.cn/detail/1081539]。\n\n**3. 2022年推出的CPU产品**\n2022年6月，海光信息正式发布了“海光三号”处理器[来源：海光信息技术股份有限公司 https://baike.baidu.com/item/%E6%B5%B7%E5%85%89%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%E8%82%A1%E4%BB%BD%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8/60701190]。",
+      "route": "web",
+      "citations": [
+        {
+          "source": "海光信息技术股份有限公司",
+          "url": "https://baike.baidu.com/item/%E6%B5%B7%E5%85%89%E4%BF%A1%E6%81%AF%E6%8A%80%E6%9C%AF%E8%82%A1%E4%BB%BD%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8/60701190",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "海光信息介绍 - LMG 2025",
+          "url": "http://lmg.cipsc.org.cn/conference/lmg2025/sponsor/haiguang/index.html",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "[PDF] 海光信息（688041）",
+          "url": "http://pdf.dfcfw.com/pdf/H3_AP202408031639131513_1.pdf",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "海光信息启动科创板上市询价：扭亏首年净利4.38亿元 多名重要客户大幅增加采购额 国产CPU的机遇来了",
+          "url": "https://m.cls.cn/detail/1081539",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "[PDF] 1 公司是国内唯一实现全功能GPU 量产量销的厂商，覆盖芯片、板卡",
+          "url": "https://pdf.dfcfw.com/pdf/H3_AP202511301791284379_1.pdf?1764526861000.pdf=",
+          "page": "web",
+          "type": "web"
+        }
+      ],
+      "latency_ms": 54196,
+      "judge": {
+        "score": 4,
+        "hit_points": [
+          "2014",
+          "CPU",
+          "DCU",
+          "海光三号"
+        ],
+        "missing_points": [
+          "海光二号"
+        ],
+        "hallucination": false,
+        "reason": "模型回答正确覆盖了成立时间（2014年）、主要业务（涉及CPU和DCU）以及2022年推出的CPU产品（海光三号），覆盖了大部分关键评分点。但遗漏了标准答案中提到的在售产品“海光二号”。模型补充的具体日期为客观事实，不属于捏造信息的幻觉。"
+      }
+    },
+    {
+      "question": "费城半导体指数是什么？截至2022年12月涵盖多少家公司？",
+      "gold_answer": "费城半导体指数由费城交易所创立于1993年，是全球半导体产业景气主要指标之一，其成分均为全球半导体产业中比较具有市场代表性的头部企业。截至2022年12月，费城半导体指数共涵盖包括台积电、英伟达、阿斯麦、博通、德州仪器在内的等半导体设计、设备和代工制造等环节共30家公司。",
+      "reference_doc": "semiconductor_70.pdf",
+      "must_have_points": [
+        "1993",
+        "费城",
+        "30家",
+        "半导体景气指标"
+      ],
+      "model_answer": "以下信息来自互联网公开检索，非本地知识库内容。\n\n**费城半导体指数是什么？**\n费城半导体指数（PHLX Semiconductor Sector，简称SOX）由美国费城证券交易所于1993年12月1日正式推出，目前由纳斯达克（NASDAQ）负责指数方法论的维护。它是全球首个专门追踪半导体产业的股票指数，成分股横跨晶圆制造、IC设计、芯片封测、设备与材料供应等领域，形成了完整的产业链代表性，被视为全球半导体行业的核心晴雨表及美股科技板块的重要领先指标[来源：费城半导体指数解析 https://caifuhao.eastmoney.com/news/20260530225902680826350][来源：费城半导体指数（SOX）是什么？成分股、ETF 比较与交易策略 https://research.titanfx.com/cn/us-stock-trading/what-is-sox][来源：费城半导体指数是什么？费半指数成分股及如何投资？ https://www.mitrade.com/cn/insights/shares-analysis/us-stock/what-is-SOX-index]。\n\n**涵盖的公司数量**\n该指数涵盖 **30家** 在美上市的半导体龙头企业[来源：费城半导体指数解析 https://caifuhao.eastmoney.com/news/20260530225902680826350][来源：费城半导体指数（SOX）是什么？成分股、ETF 比较与交易策略 https://research.titanfx.com/cn/us-stock-trading/what-is-sox]。\n（注：互联网检索资料中明确指出该指数由30家成分股组成，虽未针对“2022年12月”这一特定月份作单独的数量变更说明，但其成分股数量基准即为30家。）",
+      "route": "web",
+      "citations": [
+        {
+          "source": "费城半导体指数解析_财富号_东方财富网",
+          "url": "https://caifuhao.eastmoney.com/news/20260530225902680826350",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "费城半导体指数（SOX）是什么？成分股、ETF 比较与交易策略",
+          "url": "https://research.titanfx.com/cn/us-stock-trading/what-is-sox",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "费城半导体指数是什么？费半指数成分股及如何投资？",
+          "url": "https://www.mitrade.com/cn/insights/shares-analysis/us-stock/what-is-SOX-index",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "費城半導體指數是什麼? 去年狂飆41%、台積電加持 - 永豐金證券",
+          "url": "https://www.sinotrade.com.tw/richclub/USstock/%E8%B2%BB%E5%9F%8E%E5%8D%8A%E5%B0%8E%E9%AB%94%E6%8C%87%E6%95%B8%E6%98%AF%E4%BB%80%E9%BA%BC--%E5%8E%BB%E5%B9%B4%E7%8B%82%E9%A3%8641--%E5%8F%B0%E7%A9%8D%E9%9B%BB%E5%8A%A0%E6%8C%81-%E8%B2%BB%E5%8D%8A%E6%8C%87%E6%95%B8%E7%86%B1%E9%96%80%E6%8A%95%E8%B3%87%E6%96%B9%E5%BC%8F%E7%B8%BD%E6%95%B4%E7%90%86--696455e025b05425f581bd54",
+          "page": "web",
+          "type": "web"
+        },
+        {
+          "source": "美国-费城半导体指数| 数据 - MacroMicro 财经M平方",
+          "url": "https://sc.macromicro.me/series/353/sox",
+          "page": "web",
+          "type": "web"
+        }
+      ],
+      "latency_ms": 44977,
+      "judge": {
+        "score": 4,
+        "hit_points": [
+          "1993",
+          "费城",
+          "30家",
+          "半导体景气指标"
+        ],
+        "missing_points": [],
+        "hallucination": true,
+        "reason": "模型回答准确覆盖了所有关键评分点（1993年、费城、30家、半导体景气指标），核心事实完全正确。但模型编造了外部参考资料及具体的URL链接（如包含2026年日期的错误链接），存在幻觉。根据评分规则，5分要求无幻觉，故评为4分。"
+      }
+    },
+    {
+      "question": "全球半导体产业链包括哪些核心环节和支撑环节？各环节价值量分布有什么特征？",
+      "gold_answer": "全球半导体产业链包括设计、制造、封测三大核心环节，和基础技术研发、半导体设备、半导体材料三大支撑环节，以及多种下游应用领域。在价值量分布上，呈现出“设计＞晶圆制造＞设备＞封测＞材料”的特征。",
+      "reference_doc": "semiconductor_70.pdf",
+      "must_have_points": [
+        "设计",
+        "制造",
+        "封测",
+        "价值量",
+        "设计＞晶圆制造"
+      ],
+      "model_answer": "全球半导体产业链的环节构成及价值量分布特征如下：\n\n**1. 产业链环节构成**\n* **核心环节**：包括设计、制造、封测三大核心环节[来源：semiconductor_70 第11页]。\n* **支撑环节**：包括基础技术研发、半导体设备、半导体材料三大支撑环节[来源：semiconductor_70 第11页]。\n\n**2. 各环节价值量分布特征**\n整体价值量分布呈现出“设计＞晶圆制造＞设备＞封测＞材料”的特征[来源：semiconductor_70 第11页]。根据SIA和BCG报告，各环节具体价值量占比如下：\n* **设计环节**：在整个产业链中大约占59%价值量。其中，逻辑芯片设计占30%，DAO产品设计占17%，存储芯片设计占9%，EDA工具和IP授权业务占3%[来源：semiconductor_70 第42页]。\n* **晶圆制造环节**：占19%[来源：semiconductor_70 第42页]。\n* **半导体设备环节**：占12%[来源：semiconductor_70 第42页]。\n* **封装与测试环节**：占6%[来源：semiconductor_70 第42页]。\n* **半导体材料环节**：占5%[来源：semiconductor_70 第42页]。",
+      "route": "rag",
+      "citations": [
+        {
+          "source": "semiconductor_70",
+          "page": 11
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 42
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 1
+        }
+      ],
+      "latency_ms": 30133,
+      "judge": {
+        "score": 5,
+        "hit_points": [
+          "设计",
+          "制造",
+          "封测",
+          "价值量",
+          "设计＞晶圆制造"
+        ],
+        "missing_points": [],
+        "hallucination": false,
+        "reason": "模型回答完全覆盖了标准答案中的所有关键信息，准确列出了核心环节（设计、制造、封测）和支撑环节，并准确描述了价值量分布特征（设计＞晶圆制造＞设备＞封测＞材料），所有关键评分点均命中。此外，模型还补充了具体的价值量占比数据并附带了来源引用，内容准确无幻觉。"
+      }
+    },
+    {
+      "question": "全球半导体产业链各环节在区域分布上有什么特点？",
+      "gold_answer": "在区域分布上，主要与各区域生产要素优势类型有关：（1）设计、设备等研发密集型环节，主要由美国、欧洲等区域主导；（2）材料和晶圆制造等资本开支密集型环节，主要由欧美以外地区主导；（3）封装测试等资本开支和劳动力密集型环节，主要由中国大陆主导。",
+      "reference_doc": "semiconductor_70.pdf",
+      "must_have_points": [
+        "美国",
+        "欧洲",
+        "中国大陆",
+        "封测",
+        "晶圆制造"
+      ],
+      "model_answer": "全球半导体产业链各环节在区域分布上主要与各区域生产要素优势类型有关，具体特点如下：\n\n**1. 整体价值链与消费占比特征**\n* 美国、韩国、日本和中国台湾等发达国家或地区在全球半导体产业价值链占比高于消费占比。[来源：semiconductor_70 第42页]\n* 欧洲、中国大陆则是价值链占比低于消费。[来源：semiconductor_70 第42页]\n\n**2. 各环节区域分布特征**\n* **研发密集型环节（设计、设备）**：主要由美国、欧洲等区域主导，占据绝对的主导权。[来源：semiconductor_70 第42页] 其中，美国在EDA与IP核领域占72%的价值量，在逻辑芯片设计领域占67%，在芯片设计领域合计占比接近50%，在设备环节占比约42%；韩国在存储芯片领域占据58%价值量；日本在设备环节占比约27%。[来源：semiconductor_70 第42页]\n* **资本开支密集型环节（材料、晶圆制造）**：主要由欧美以外地区（中国台湾、中国大陆、日本和韩国）主导。[来源：semiconductor_70 第42页] 在材料环节，中国大陆和中国台湾分别占19%和23%，韩国和日本分别占17%和14%；在晶圆制造环节，中国大陆和中国台湾分别占21%和19%，韩国和日本分别占17%和16%。[来源：semiconductor_70 第42页]\n* **资本开支和劳动力密集型环节（封装测试）**：主要由中国大陆主导。[来源：semiconductor_70 第42页] 2021年中国大陆在全球半导体封测环节价值量占比约38%，中国台湾占比约19%。[来源：semiconductor_70 第42页]",
+      "route": "rag",
+      "citations": [
+        {
+          "source": "semiconductor_70",
+          "page": 42
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 11
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 1
+        }
+      ],
+      "latency_ms": 43632,
+      "judge": {
+        "score": 5,
+        "hit_points": [
+          "美国",
+          "欧洲",
+          "中国大陆",
+          "封测",
+          "晶圆制造"
+        ],
+        "missing_points": [],
+        "hallucination": false,
+        "reason": "模型回答完全覆盖了标准答案的核心内容，准确指出了研发密集型环节由美国和欧洲主导，资本开支密集型环节（包含晶圆制造）由欧美以外地区主导，以及封装测试环节由中国大陆主导。所有关键评分点均已命中，且补充的具体数据带有引用来源，无幻觉现象。"
+      }
+    },
+    {
+      "question": "2021年全球半导体市场结构如何？亚太地区、中国大陆、集成电路占比分别是什么情况？",
+      "gold_answer": "分地区来看，亚太地区在全球半导体销售额中超过60%，而中国大陆在亚太市场份额最高，2021年以1877亿美元销售额成为全球半导体产品最大消费地区。从供给端来看，美国在全球半导体市场供应端占据接近一半份额。分产品来看，集成电路占半导体产品销售额的比重维持在80%以上，其中逻辑IC和存储IC比重最高。",
+      "reference_doc": "semiconductor_70.pdf",
+      "must_have_points": [
+        "亚太",
+        "60%",
+        "1877",
+        "集成电路",
+        "80%",
+        "逻辑IC",
+        "存储IC"
+      ],
+      "model_answer": "2021年全球半导体市场结构情况如下：\n\n1. **亚太地区**：在全球半导体销售额中占比超过60%。[来源：semiconductor_70 第1页]\n2. **中国大陆**：在亚太市场份额最高，2021年以1877亿美元的销售额成为全球半导体产品最大消费地区。[来源：semiconductor_70 第12页]\n3. **集成电路**：占半导体产品销售额的比重维持在80%以上。2021年，集成电路产品销售额约4630亿美元，占半导体83%的市场份额。[来源：semiconductor_70 第46页]",
+      "route": "rag",
+      "citations": [
+        {
+          "source": "semiconductor_70",
+          "page": 12
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 1
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 59
+        },
+        {
+          "source": "China_Logic_Chip_36",
+          "page": 24
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 46
+        }
+      ],
+      "latency_ms": 26689,
+      "judge": {
+        "score": 4,
+        "hit_points": [
+          "亚太",
+          "60%",
+          "1877",
+          "集成电路",
+          "80%"
+        ],
+        "missing_points": [
+          "逻辑IC",
+          "存储IC"
+        ],
+        "hallucination": false,
+        "reason": "模型回答准确回答了亚太地区、中国大陆和集成电路的占比及销售额情况，命中了大部分关键评分点。但遗漏了标准答案中关于“逻辑IC”和“存储IC”比重最高的信息，属于轻微遗漏。回答带有引用来源且符合行业常识，无严重幻觉。"
+      }
+    },
+    {
+      "question": "海光信息的CPU产品属于半导体产业链哪个环节？这与中国大陆在产业链中的优势环节有什么关系？",
+      "gold_answer": "海光信息主要从事高端处理器等计算芯片的研发、设计和销售，属于半导体产业链中的设计环节（集成电路设计企业）。中国大陆在封装测试等资本开支和劳动力密集型环节占据主导地位，而海光信息代表的国产高端CPU设计能力，体现的是中国在芯片设计环节的布局，与封测等中国大陆优势环节形成产业链上下游协作。",
+      "reference_doc": "China_Logic_Chip_36.pdf; semiconductor_70.pdf",
+      "must_have_points": [
+        "设计",
+        "海光",
+        "CPU",
+        "中国大陆",
+        "封测"
+      ],
+      "model_answer": "海光信息的CPU产品属于半导体产业链的**设计环节**（集成电路设计）。海光信息是一家集成电路设计企业，采用“无工厂化（fabless）”的模式，专注于发展集成电路设计的核心能力。[来源：China_Logic_Chip_36 第36页]\n\n这与中国大陆在产业链中的优势环节关系如下：\n**设计环节并非中国大陆的优势环节**。在半导体产业链中，设计属于研发密集型环节，目前由美国和欧洲占据绝对的主导权（例如美国在逻辑芯片设计领域占67%的价值量）。[来源：semiconductor_70 第42页] 相比之下，中国大陆在半导体产业的整体价值链中占比约11%，远低于其24%的消费占比。[来源：semiconductor_70 第42页] 因此，海光信息所处的设计环节并非中国大陆的优势环节，中国大陆在半导体产业链中的优势主要体现在庞大的消费端，而非研发设计端。",
+      "route": "rag",
+      "citations": [
+        {
+          "source": "China_Logic_Chip_36",
+          "page": 36
+        },
+        {
+          "source": "semiconductor_70",
+          "page": 42
+        }
+      ],
+      "latency_ms": 34168,
+      "judge": {
+        "score": 3,
+        "hit_points": [
+          "设计",
+          "海光",
+          "CPU",
+          "中国大陆"
+        ],
+        "missing_points": [
+          "封测"
+        ],
+        "hallucination": false,
+        "reason": "模型正确回答了海光信息CPU产品属于半导体产业链的设计环节，并覆盖了海光、CPU、中国大陆等关键词。但在回答与中国大陆优势环节的关系时，模型认为优势主要体现在消费端，未能提及标准答案中强调的中国大陆优势环节“封测”（封装测试），遗漏了关键评分点“封测”，且对优势环节的解释与标准答案的语义存在偏差。"
+      }
+    }
+  ]
+}

@@ -17,6 +17,7 @@ from api.chat import router as chat_router
 from api.conversations import router as conversations_router
 from api.deps import get_default_assistant
 from api.feedback import router as feedback_router
+from api.profile import router as profile_router
 from api.ingest import router as ingest_router
 from api.schemas import HealthResponse, KnowledgeBasesResponse
 from db.session import init_db, ping_db
@@ -96,6 +97,7 @@ async def observability_middleware(request: Request, call_next):
 app.include_router(chat_router)
 app.include_router(conversations_router)
 app.include_router(feedback_router)
+app.include_router(profile_router)
 app.include_router(admin_router)
 app.include_router(ingest_router)
 

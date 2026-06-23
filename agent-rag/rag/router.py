@@ -6,13 +6,16 @@ from typing import TYPE_CHECKING, Literal
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from rag.knowledge_bases import get_domain_hint
-from rag.metrics import record_llm
+from rag.llm_timing import timed_llm_invoke
 from rag.telemetry import span
 
 if TYPE_CHECKING:
     from rag.assistant import CarSafetyWhitepaperAssistant
 
 RouteType = Literal["direct", "rag", "tool", "web"]
+
+# Router 是 Graph 的入口分流器：只判断用户问题该走 direct/rag/tool/web 哪条路径，
+# 不做资料检索，也不生成最终答案；本地知识库取证发生在 retrieve 节点。
 
 _WEB_INTENT_PATTERNS = (
     r"联网",
@@ -45,7 +48,12 @@ def detect_web_intent(query: str) -> bool:
     return any(re.search(pattern, text, re.IGNORECASE) for pattern in _WEB_INTENT_PATTERNS)
 
 
-def classify_route(assistant: CarSafetyWhitepaperAssistant, query: str) -> RouteType:
+def classify_route(
+    assistant: CarSafetyWhitepaperAssistant,
+    query: str,
+    *,
+    thread_id: str | None = None,
+) -> RouteType:
     web_by_keyword = detect_web_intent(query)
     if web_by_keyword:
         from rag.debug_trace import debug_log
@@ -60,12 +68,16 @@ def classify_route(assistant: CarSafetyWhitepaperAssistant, query: str) -> Route
 
     domain_hint = get_domain_hint(assistant.collection_name)
     with span("rag.llm.invoke", {"rag.operation": "router"}):
-        record_llm()
-        response = assistant.router_llm.invoke(
-            [
-                SystemMessage(content="只输出 direct、rag、tool 或 web 其中一个词。"),
-                HumanMessage(content=ROUTER_SYSTEM.format(domain_hint=domain_hint, query=query)),
-            ]
+        response = timed_llm_invoke(
+            "router",
+            lambda: assistant.router_llm.invoke(
+                [
+                    SystemMessage(content="只输出 direct、rag、tool 或 web 其中一个词。"),
+                    HumanMessage(content=ROUTER_SYSTEM.format(domain_hint=domain_hint, query=query)),
+                ]
+            ),
+            fallback_text=query,
+            thread_id=thread_id,
         )
     text = (response.content or "").strip().lower()
     if "web" in text:

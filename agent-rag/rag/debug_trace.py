@@ -5,7 +5,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-_DEBUG_LOG = Path(__file__).resolve().parent.parent / "debug-8d92b2.log"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_LOGS_DIR = _PROJECT_ROOT / "logs"
+_DEBUG_LOG = _LOGS_DIR / "debug-8d92b2.log"
 _SESSION_ID = "8d92b2"
 
 
@@ -27,6 +29,7 @@ def debug_log(
             "hypothesisId": hypothesis_id,
             "runId": run_id,
         }
+        _LOGS_DIR.mkdir(parents=True, exist_ok=True)
         with _DEBUG_LOG.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception:
